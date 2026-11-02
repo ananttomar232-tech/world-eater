@@ -9,6 +9,7 @@ import json
 import math
 import os
 import sys
+import zlib
 
 import numpy as np
 from PIL import Image
@@ -117,7 +118,8 @@ class Model:
                 for face, (u, v, w, h) in cube.uv.items():
                     mat = cube.material(face)
                     fn = painters[mat]
-                    seed = hash((bone.name, ci, face, cube.seed)) & 0xFFFFFFF
+                    # Stable across runs (Python's hash() is randomised per process), so regeneration is reproducible.
+                    seed = zlib.crc32(f"{bone.name}|{ci}|{face}|{cube.seed}".encode()) & 0xFFFFFFF
                     b, g = fn(w, h, face, seed, cube.params)
                     base[v:v + h, u:u + w] = b
                     if g is not None:
