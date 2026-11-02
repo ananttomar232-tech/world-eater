@@ -22,7 +22,7 @@ the game.
 |---|---|
 | `geo/entity/world_eater.geo.json` | Boss geometry (Bedrock 1.12.0, per-face UV) |
 | `animations/entity/world_eater.animation.json` | Boss animations |
-| `textures/entity/world_eater.png` | Boss base texture (512x256) |
+| `textures/entity/world_eater.png` | Boss base texture (1024x1024, 2 texels per unit) |
 | `textures/entity/world_eater_glow.png` | Boss emissive layer (same size) |
 | `geo/entity/voidling.geo.json`, `animations/entity/voidling.animation.json`, `textures/entity/voidling(_glow).png` | Voidling |
 | `geo/entity/void_meteor.geo.json`, `animations/entity/void_meteor.animation.json`, `textures/entity/void_meteor(_glow).png` | Meteor |
@@ -32,29 +32,35 @@ the game.
 
 ## World Eater bones
 
-The model faces **north (−Z)** in Blockbench, 16 units per block, feet at y = 0.
+The model faces **north (−Z)** in Blockbench, 16 units per block, feet at y = 0. It is textured at
+**2 texels per unit** (a 1024x1024 atlas), twice vanilla density, for scale, rune and starfield detail.
 
 ```
-root                         whole-body offsets (flight lift, death slump)
-└─ body                      pelvis; pitched forward ~70° when gliding
-   ├─ chest                  torso, gold sigil plate
-   │  ├─ neck_lower          ┐ head look is spread 30% / 30% / 40%
-   │  │  └─ neck_upper       │ across these three bones
-   │  │     └─ head          ┘
-   │  │        ├─ jaw        opens with rotation X+
-   │  │        └─ mouth      EMPTY locator: Void Breath origin, place at the jaw tip
-   │  ├─ arm_left ─ forearm_left ─ hand_left
-   │  ├─ arm_right ─ forearm_right ─ hand_right
-   │  ├─ wing_left ─ wing_left_mid ─ wing_left_tip         wing_left_tip: star trail origin
-   │  └─ wing_right ─ wing_right_mid ─ wing_right_tip
-   ├─ leg_left ─ shin_left ─ foot_left
-   ├─ leg_right ─ shin_right ─ foot_right
-   └─ tail_1 ─ tail_2 ─ tail_3 ─ tail_4 ─ tail_5
+root                              whole-body offsets (flight lift, death slump)
+└─ body                           pelvis; pitched forward ~70° when gliding
+   ├─ chest                       torso, R-sigil breastplate, pauldrons and crystal clusters
+   │  ├─ neck_lower               ┐ head look is spread 30% / 30% / 40%
+   │  │  └─ neck_upper            │ across these three bones
+   │  │     └─ head               ┘ crowned skull, gold faceplate, glowing eyes
+   │  │        ├─ jaw             rests 12° open; opens further with rotation X+
+   │  │        ├─ mouth           EMPTY locator: Void Breath origin, at the jaw tip
+   │  │        └─ horn_{left,right}_1 ─ _2 ─ _3     three-segment swept gold horns
+   │  ├─ arm_{left,right} ─ forearm_* ─ hand_*
+   │  └─ wing_{left,right}        gold humerus + inner membrane
+   │     └─ wing_*_mid            forearm + forearm membrane; the wrist is its far end
+   │        ├─ wing_*_tip         leading finger
+   │        │  └─ wing_*_claw     EMPTY locator: wing-tip star trail origin
+   │        ├─ wing_*_finger_2    ┐ trailing fingers, each with a membrane wedge that
+   │        ├─ wing_*_finger_3    │ spans down to the next finger (bat-wing panels)
+   │        └─ wing_*_finger_4    ┘
+   ├─ leg_{left,right} ─ shin_* ─ foot_*
+   └─ tail_1 ─ tail_2 ─ tail_3 ─ tail_4 ─ tail_5 ─ tail_6 (crystal blade tip)
 ```
 
-Code uses the bones `mouth`, `wing_left_tip`, `wing_right_tip` (tracked by `AetherfallRenderer`) and
-`neck_lower`, `neck_upper`, `head` (head look, `AetherfallModel`). Every other bone is only referenced by
-the animation file.
+Code uses the bones `mouth`, `wing_left_claw` and `wing_right_claw` (tracked by `AetherfallRenderer`), and
+`neck_lower`, `neck_upper` and `head` (head look, `AetherfallModel`). The finger fan opens and closes
+through `spread` in `tools/model/animations_world_eater.py`: tucked wings fold the fingers onto the leading
+finger. Every other bone is only referenced by the animation file.
 
 ## World Eater animations
 
@@ -100,7 +106,9 @@ What glows on the World Eater, matching the reference art:
 
 | Surface | Glow colour |
 |---|---|
-| Eyes | white-violet core, violet rim |
+| Eyes, nostrils | white-violet core, violet rim |
+| Gold armour, horns and wing spars | gold, a steady metallic sheen with bright bevelled edges |
+| Scale rims | faint violet, so the body stays readable at night |
 | Rune engravings on the gold armour, the `R` sigil | violet `#BE6EFF` |
 | Gold borders of the wings and the wing bones | gold `#FFC450` |
 | Stars and nebula in the wing membranes | white to violet, soft |

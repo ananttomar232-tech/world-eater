@@ -17,12 +17,12 @@ import software.bernie.geckolib.renderer.GeoEntityRenderer;
  * <ul>
  *     <li>GeckoLib model with cut-out (star-membrane wings use alpha) and an {@link EmissiveGlowLayer} that adds
  *     {@code world_eater_glow.png} full-bright: eyes, runes, gold edges, crystals and the starfield.</li>
- *     <li>Tracks the {@code mouth} and wing-tip bones each frame so particles and the beam come from the real model.</li>
+ *     <li>Tracks the {@code mouth} and {@code wing_*_claw} locator bones each frame so particles and the beam come from the real model.</li>
  *     <li>Draws the Void Breath beam from the jaws to the server-synced impact point.</li>
  * </ul>
  */
 public class AetherfallRenderer extends GeoEntityRenderer<AetherfallEntity> {
-    private static final String[] TRACKED = {"mouth", "wing_left_tip", "wing_right_tip"};
+    private static final String[] TRACKED = {"mouth", "wing_left_claw", "wing_right_claw"};
 
     public AetherfallRenderer(EntityRendererProvider.Context context) {
         super(context, new AetherfallModel());
@@ -51,8 +51,8 @@ public class AetherfallRenderer extends GeoEntityRenderer<AetherfallEntity> {
 
         BakedGeoModel baked = getGeoModel().getBakedModel(getGeoModel().getModelResource(entity));
         entity.clientMouth = worldPos(baked, "mouth");
-        entity.clientWingTipLeft = worldPos(baked, "wing_left_tip");
-        entity.clientWingTipRight = worldPos(baked, "wing_right_tip");
+        entity.clientWingTipLeft = worldPos(baked, "wing_left_claw");
+        entity.clientWingTipRight = worldPos(baked, "wing_right_claw");
 
         if (entity.isBeamActive() && entity.clientMouth != null) {
             double ex = Mth.lerp(partialTick, entity.xo, entity.getX());

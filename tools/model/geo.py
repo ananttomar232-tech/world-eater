@@ -81,13 +81,15 @@ class Model:
     # -------------------------------------------------------------------------------------------------------------
     # Atlas packing (shelf packer, tallest first). Faces of 1 px or more, rounded up to whole texels.
     # -------------------------------------------------------------------------------------------------------------
-    def pack(self, width):
+    def pack(self, width, density=1):
+        """Packs every face into the atlas at `density` texels per model unit (2 = twice vanilla detail)."""
+        self.density = density
         rects = []
         for bone in self.bones:
             for cube in bone.cubes:
                 for face in cube.active_faces():
                     w, h = cube.face_size(face)
-                    rects.append((max(1, math.ceil(w)), max(1, math.ceil(h)), cube, face))
+                    rects.append((max(1, math.ceil(w * density - 1e-6)), max(1, math.ceil(h * density - 1e-6)), cube, face))
         rects.sort(key=lambda r: (-r[1], -r[0]))
         x = y = shelf = 0
         pad = 1
@@ -152,8 +154,7 @@ class Model:
                     c["rotation"] = cube.rotation
                     c["pivot"] = cube.pivot or [cube.origin[i] + cube.size[i] / 2 for i in range(3)]
                 for face, (u, v, w, h) in cube.uv.items():
-                    fw, fh = cube.face_size(face)
-                    c["uv"][face] = {"uv": [u, v], "uv_size": [fw, fh]}
+                    c["uv"][face] = {"uv": [u, v], "uv_size": [w, h]}
                 cubes.append(c)
             if cubes:
                 entry["cubes"] = cubes

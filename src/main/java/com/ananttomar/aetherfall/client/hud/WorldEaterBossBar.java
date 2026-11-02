@@ -116,7 +116,8 @@ public final class WorldEaterBossBar {
         }
         boolean bottom = AetherfallConfig.CLIENT.bossBarPosition.get() == AetherfallConfig.BossBarPosition.BOTTOM;
         int x = (width - FRAME_W) / 2;
-        int y = bottom ? height - 96 : 15;
+        // Bottom: just above the hearts/armour rows (hotbar 22 + two status rows), like the reference art.
+        int y = bottom ? height - 76 : 15;
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
         for (LerpingBossEvent event : THIS_FRAME) {

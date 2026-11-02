@@ -1,7 +1,11 @@
-"""Surface materials for the Aetherfall models. Each returns (base RGBA, glowmask RGBA or None) for one face.
+"""Surface materials for the Aetherfall models. Each returns (base RGBA, glow RGBA or None) for one face.
 
-Face orientation: for side faces, row 0 is the top edge; for up/down faces row 0 is the back (+Z) / front edge
-respectively (see preview.py). Materials that need orientation receive the face name.
+Faces are painted in texels (the model is packed at 2 texels per unit). For side faces row 0 is the top edge;
+for left-wing planes column 0 is the joint and the last column the tip. Mirrored (right-side) cubes receive
+params["flip"] and are flipped horizontally so asymmetric shapes (membrane wedges) stay correct.
+
+Glow: the colour drawn additively, full-bright, by EmissiveGlowLayer. Alpha scales it (premultiplied on export),
+so alpha 40 is a soft sheen and 255 a hot glow.
 """
 import math
 import os
@@ -10,11 +14,19 @@ import sys
 import numpy as np
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "assets"))
-from palette import GOLD, NEBULA, STAR, VIOLET, hx, value_noise  # noqa: E402
+from palette import GOLD, STAR, hx, value_noise  # noqa: E402
 
-SCALE = [hx("08050d"), hx("100a18"), hx("181022"), hx("21162f"), hx("2c1e3e"), hx("3a2852"), hx("4b3568")]
-BELLY = [hx("140d1f"), hx("1d142b"), hx("271b38"), hx("322447"), hx("3f2e58")]
-IVORY = [hx("6e5a7e"), hx("a896b8"), hx("d9cde6"), hx("f4eefb")]
+# Brighter than vanilla "dark" mobs on purpose: the reference creature reads violet, not black.
+SCALE = [hx("140c22"), hx("211533"), hx("2f1f47"), hx("3e2a5c"), hx("503774"), hx("65468f"), hx("7e5aae")]
+BELLY = [hx("1f1531"), hx("2c1f43"), hx("3a2a56"), hx("4a376a"), hx("5c4680")]
+VIOLET = [hx("3a0f66"), hx("5a189e"), hx("7b2cd6"), hx("9d4dff"), hx("bb7bff"), hx("dbb2ff"), hx("f4e6ff")]
+NEBULA = [hx("1a0838"), hx("2c0e5c"), hx("45168a"), hx("6224b4"), hx("8a3ad8"), hx("b65cf0")]
+MAGENTA = [hx("5a1070"), hx("8a1ea6"), hx("c040d8")]
+IVORY = [hx("7a6890"), hx("b0a0c4"), hx("ddd2ee"), hx("f6f0ff")]
+
+G_VIOLET = (190, 100, 255)
+G_GOLD = (255, 190, 80)
+G_WHITE = (245, 225, 255)
 
 
 def blank(w, h):
@@ -22,70 +34,103 @@ def blank(w, h):
 
 
 def noise(w, h, seed, scale=3.0, octaves=2):
-    # value_noise needs a square-ish tile; generate at max dim and crop.
     n = max(w, h, 4)
     return value_noise(n, n, seed, scale=scale, octaves=octaves)[:h, :w]
 
 
-def glyph_bits():
-    """5x5 rune glyphs used for gold engravings (the World Eater's script)."""
-    raw = [
-        ["#...#", ".#.#.", "..#..", ".#.#.", "#...#"],
-        ["..#..", ".###.", "#.#.#", "..#..", "..#.."],
-        ["####.", "#...#", "####.", "#.#..", "#..##"],  # the 'R' sigil from the reference armour
-        ["#.#.#", "#.#.#", ".###.", "..#..", ".###."],
-        [".###.", "#...#", "#.#.#", "#...#", ".###."],
-        ["#....", "##...", "#.#..", "#..#.", "#####"],
-    ]
-    return [[[c == "#" for c in row] for row in g] for g in raw]
+def finish(img, glow, p):
+    if p.get("flip"):
+        img = img[:, ::-1].copy()
+        glow = glow[:, ::-1].copy() if glow is not None else None
+    return img, glow
 
 
-GLYPHS = glyph_bits()
+GLYPHS = [
+    ["#...#", ".#.#.", "..#..", ".#.#.", "#...#"],
+    ["..#..", ".###.", "#.#.#", "..#..", "..#.."],
+    ["####.", "#...#", "####.", "#.#..", "#..##"],   # the 'R' sigil of the reference armour
+    ["#.#.#", "#.#.#", ".###.", "..#..", ".###."],
+    [".###.", "#...#", "#.#.#", "#...#", ".###."],
+    ["#....", "##...", "#.#..", "#..#.", "#####"],
+    ["#####", "..#..", ".###.", "#.#.#", "#...#"],
+]
+GLYPHS = [[[c == "#" for c in row] for row in g] for g in GLYPHS]
 
 
 # ---------------------------------------------------------------------------------------------------------------------
 
 def scales(w, h, face, seed, p):
+    """Overlapping fish scales (8x6 texels), painted row by row so each row overlaps the one above: violet body,
+    lit lower rim with a soft violet glow, shadow where it tucks under the next scale."""
     rng = np.random.default_rng(seed)
     n = noise(w, h, seed, 2.5)
     img = blank(w, h)
-    dark = face in ("down",)
-    sheen = p.get("sheen", 0.0)
+    glow = blank(w, h)
+    dark = face == "down"
+    sheen = p.get("sheen", 0.12)
+    base_shift = -1.0 if dark else 0.0
     for y in range(h):
         for x in range(w):
-            row = y // 3
-            off = 0 if row % 2 == 0 else 2
-            lx = (x + off) % 4
-            ly = y % 3
-            tone = 2 + (1 if n[y, x] > 0.6 else 0) - (1 if n[y, x] < 0.38 else 0)
-            if ly == 2:
-                tone += 1 if lx in (1, 2) else 0  # lit lower rim of each scale
-            if ly == 0 and lx in (0, 3):
-                tone -= 1  # shadow between scales
-            if dark:
-                tone -= 1
-            img[y, x] = SCALE[int(np.clip(tone, 0, len(SCALE) - 1))]
-            if sheen and ly == 2 and lx == 1 and rng.random() < sheen:
-                img[y, x] = VIOLET[2]
-    return img, None
+            img[y, x] = SCALE[1]
+    cw, ch = 8, 6
+    for row in range(-1, h // ch + 2):
+        cy = row * ch - 1
+        off = 0 if row % 2 == 0 else cw // 2
+        for col in range(-1, w // cw + 2):
+            cx = col * cw + off + (cw - 1) / 2
+            for y in range(int(cy), int(cy + ch + 2)):
+                for x in range(int(cx - cw / 2), int(cx + cw / 2 + 1)):
+                    if not (0 <= x < w and 0 <= y < h):
+                        continue
+                    dx = (x - cx) / (cw / 2)
+                    dy = (y - cy) / (ch + 1)
+                    if dy < 0 or dx * dx + dy * dy > 1.0:
+                        continue
+                    d = math.sqrt(dx * dx + dy * dy)
+                    tone = 2.2 + dy * 1.8 + (n[y, x] - 0.5) * 1.2 + base_shift
+                    if d > 0.82:
+                        tone += 1.4          # lit rim
+                    elif d > 0.7:
+                        tone -= 0.6          # groove inside the rim
+                    if dx < -0.55:
+                        tone -= 0.6          # side shading
+                    t = int(np.clip(round(tone), 0, len(SCALE) - 1))
+                    img[y, x] = SCALE[t]
+                    if d > 0.82 and not dark:
+                        glow[y, x] = (*G_VIOLET, 72)
+                        if rng.random() < sheen * 0.4:
+                            img[y, x] = VIOLET[4]
+                            glow[y, x] = (*G_VIOLET, 150)
+                    else:
+                        glow[y, x] = (0, 0, 0, 0)
+    return finish(img, glow, p)
 
 
 def belly(w, h, face, seed, p):
+    """Horizontal armoured belly plates with violet-lit seams."""
     n = noise(w, h, seed, 2.0)
     img = blank(w, h)
+    glow = blank(w, h)
     for y in range(h):
-        band = y % 4
+        band = y % 6
         for x in range(w):
-            tone = 2 + (1 if n[y, x] > 0.6 else 0)
+            tone = 2 + (1 if n[y, x] > 0.62 else 0) - (1 if n[y, x] < 0.36 else 0)
             if band == 0:
-                tone = 0  # seam between plates
+                tone = 0
             elif band == 1:
                 tone += 1
+            elif band == 5:
+                tone -= 1
             img[y, x] = BELLY[int(np.clip(tone, 0, len(BELLY) - 1))]
-    return img, None
+            if band == 0 and (x // 3) % 2 == 0:
+                img[y, x] = VIOLET[1]
+                glow[y, x] = (*G_VIOLET, 70)
+    return finish(img, glow, p)
 
 
 def gold(w, h, face, seed, p):
+    """Polished forged gold: vertical gradient, bevelled edges, rivets, a soft metallic sheen in the glow layer,
+    optional glowing rune engravings (rune) or the R sigil (sigil)."""
     rng = np.random.default_rng(seed)
     n = noise(w, h, seed, 3.0)
     img = blank(w, h)
@@ -93,61 +138,68 @@ def gold(w, h, face, seed, p):
     for y in range(h):
         grad = 1.0 - y / max(1, h - 1)
         for x in range(w):
-            t = 3 + grad * 1.4 + (n[y, x] - 0.5) * 1.2
-            if y == 0 or x == 0:
-                t += 1.3
-            if y == h - 1 or x == w - 1:
-                t -= 1.4
+            t = 3.2 + grad * 1.6 + (n[y, x] - 0.5) * 1.4
+            edge_hi = y <= 1 or x <= 1
+            edge_lo = y >= h - 2 or x >= w - 2
+            if edge_hi:
+                t += 1.4
+            if edge_lo:
+                t -= 1.6
             img[y, x] = GOLD[int(np.clip(round(t), 0, 6))]
-    # Rivets in the corners of larger plates
-    if w >= 8 and h >= 6:
-        for (rx, ry) in ((2, 2), (w - 3, 2), (2, h - 3), (w - 3, h - 3)):
+            glow[y, x] = (*G_GOLD, 210 if edge_hi else 120)
+    if w >= 12 and h >= 10:
+        for (rx, ry) in ((3, 3), (w - 4, 3), (3, h - 4), (w - 4, h - 4)):
             img[ry, rx] = GOLD[6]
-            if ry + 1 < h:
-                img[ry + 1, rx] = GOLD[2]
-    if p.get("rune") and face == p.get("rune_face", "north") and w >= 7 and h >= 7:
-        engrave_runes(img, glow, w, h, rng, p.get("sigil", False))
-    if p.get("edge_glow"):
-        for x in range(w):
-            glow[0, x] = (255, 200, 90, 150)
-    return img, glow
+            img[ry + 1, rx] = GOLD[2]
+            glow[ry, rx] = (*G_GOLD, 255)
+    if p.get("rune") and face == "north":
+        engrave(img, glow, w, h, rng, p.get("sigil", False))
+    return finish(img, glow, p)
 
 
-def engrave_runes(img, glow, w, h, rng, sigil):
-    """Cuts glowing violet runes into a gold face: a centred sigil on big plates, a band of script otherwise."""
-    if sigil and w >= 11 and h >= 11:
+def engrave(img, glow, w, h, rng, sigil):
+    dark = hx("1b0d2e")
+    if sigil and w >= 14 and h >= 14:
         g = GLYPHS[2]
-        s = 2 if (w >= 20 and h >= 16) else 1
+        s = max(1, min((w - 6) // 6, (h - 6) // 6))
         gw = 5 * s
         x0 = (w - gw) // 2
         y0 = (h - gw) // 2
-        # dark recessed panel behind the sigil
-        for y in range(y0 - 2, y0 + gw + 2):
-            for x in range(x0 - 2, x0 + gw + 2):
+        for y in range(y0 - 3, y0 + gw + 3):
+            for x in range(x0 - 3, x0 + gw + 3):
                 if 0 <= x < w and 0 <= y < h:
-                    img[y, x] = GOLD[1] if (y in (y0 - 2, y0 + gw + 1) or x in (x0 - 2, x0 + gw + 1)) else hx("1b0f2c")
+                    border = y in (y0 - 3, y0 + gw + 2) or x in (x0 - 3, x0 + gw + 2)
+                    img[y, x] = GOLD[1] if border else dark
+                    glow[y, x] = (*G_VIOLET, 60) if not border else glow[y, x]
         for gy in range(5):
             for gx in range(5):
                 if g[gy][gx]:
                     for dy in range(s):
                         for dx in range(s):
                             img[y0 + gy * s + dy, x0 + gx * s + dx] = VIOLET[5]
-                            glow[y0 + gy * s + dy, x0 + gx * s + dx] = (190, 110, 255, 255)
+                            glow[y0 + gy * s + dy, x0 + gx * s + dx] = (*G_VIOLET, 255)
+        return
+    if h < 7:
         return
     count = max(1, (w - 2) // 7)
-    y0 = max(1, (h - 5) // 2)
+    y0 = (h - 5) // 2
+    x_start = (w - count * 7 + 2) // 2
     for i in range(count):
         g = GLYPHS[int(rng.integers(0, len(GLYPHS)))]
-        x0 = 1 + i * 7 + ((w - 2) - count * 7) // 2 + 1
+        x0 = x_start + i * 7
         for gy in range(5):
             for gx in range(5):
                 x, y = x0 + gx, y0 + gy
-                if g[gy][gx] and 0 <= x < w and 0 <= y < h:
-                    img[y, x] = VIOLET[4]
-                    glow[y, x] = (170, 90, 255, 230)
+                if 0 <= x < w and 0 <= y < h:
+                    if g[gy][gx]:
+                        img[y, x] = VIOLET[4]
+                        glow[y, x] = (*G_VIOLET, 255)
+                    else:
+                        img[y, x] = GOLD[2]
 
 
 def crystal(w, h, face, seed, p):
+    """Faceted void crystal, hotter toward the tip; nearly the whole surface glows."""
     rng = np.random.default_rng(seed)
     img = blank(w, h)
     glow = blank(w, h)
@@ -157,115 +209,141 @@ def crystal(w, h, face, seed, p):
         heat = (1 - t) if tip_top else t
         for x in range(w):
             edge = x == 0 or x == w - 1
-            facet = (x + y // 2) % 5 == 0
-            tone = 2 + heat * 3 + (1 if facet else 0) - (1 if edge else 0)
-            img[y, x] = VIOLET[int(np.clip(round(tone), 0, 6))]
-            a = int(70 + 170 * heat)
-            glow[y, x] = (150 + int(80 * heat), 60 + int(90 * heat), 255, a if not edge else a // 2)
-    for _ in range(max(1, w * h // 40)):
+            facet = (x * 2 + y) % 7 == 0
+            tone = 2.2 + heat * 3.4 + (0.8 if facet else 0) - (1 if edge else 0)
+            c = VIOLET[int(np.clip(round(tone), 0, 6))]
+            img[y, x] = c
+            glow[y, x] = (170 + int(70 * heat), 80 + int(110 * heat), 255, int(160 + 95 * heat) if not edge else 130)
+    for _ in range(max(1, w * h // 30)):
         x, y = rng.integers(0, w), rng.integers(0, h)
         img[y, x] = STAR
-        glow[y, x] = (240, 220, 255, 255)
-    return img, glow
+        glow[y, x] = (*G_WHITE, 255)
+    return finish(img, glow, p)
 
 
 def membrane(w, h, face, seed, p):
-    """Star-filled wing membrane: deep nebula, constellations, gold-lit edges, optional scalloped trailing edge."""
+    """Cosmic wing membrane: bright violet-magenta nebula, dense stars, gold-lit borders.
+
+    shape: None (rectangle, optional scalloped bottom edge), or "wedge": the triangle between this finger
+    (top edge) and the next finger (angle p["angle"] degrees below it), closed by a scalloped trailing edge
+    between the two fingertips, exactly the panel of a bat wing.
+    """
     rng = np.random.default_rng(seed)
     n = noise(w, h, seed, 3.0, 3)
-    n2 = noise(w, h, seed + 7, 6.0, 2)
+    n2 = noise(w, h, seed + 7, 7.0, 2)
+    n3 = noise(w, h, seed + 13, 1.6, 2)
     img = blank(w, h)
     glow = blank(w, h)
     for y in range(h):
         for x in range(w):
-            t = n[y, x] * 0.75 + n2[y, x] * 0.25
-            c = NEBULA[int(np.clip(t * len(NEBULA) * 1.15, 0, len(NEBULA) - 1))]
-            if t > 0.72:
-                c = VIOLET[2]
+            t = n[y, x] * 0.6 + n2[y, x] * 0.25 + n3[y, x] * 0.15
+            c = NEBULA[int(np.clip(t * len(NEBULA) * 1.25 - 0.6, 0, len(NEBULA) - 1))]
+            if n3[y, x] > 0.68 and t > 0.55:
+                c = MAGENTA[int(np.clip((t - 0.55) * 8, 0, 2))]
             img[y, x] = c
-            if t > 0.6:
-                glow[y, x] = (120, 50, 210, int((t - 0.6) * 300))
-    # stars, with a few bright four-point stars
-    for _ in range(max(2, w * h // 28)):
+            g = int(np.clip(70 + (t - 0.35) * 260, 40, 190))
+            glow[y, x] = (c[0], c[1], c[2], g)
+    for _ in range(max(3, w * h // 18)):
         x, y = rng.integers(0, w), rng.integers(0, h)
-        bright = rng.random() < 0.18
+        bright = rng.random() < 0.2
         img[y, x] = STAR if bright else VIOLET[5]
-        glow[y, x] = (255, 240, 255, 255) if bright else (200, 150, 255, 200)
-        if bright and rng.random() < 0.5:
+        glow[y, x] = (*G_WHITE, 255) if bright else (220, 170, 255, 230)
+        if bright and rng.random() < 0.6:
             for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
                 if 0 <= x + dx < w and 0 <= y + dy < h:
                     img[y + dy, x + dx] = VIOLET[4]
-                    glow[y + dy, x + dx] = (190, 140, 255, 160)
-    # Shape: taper (triangle toward one corner) and scalloped trailing edge, both as cut-out alpha.
-    taper = p.get("taper")
-    scallop = p.get("scallop", 0)
+                    glow[y + dy, x + dx] = (200, 150, 255, 200)
+
+    keep = np.ones((h, w), dtype=bool)
+    shape = p.get("shape")
+    if shape == "wedge":
+        angle = math.radians(p.get("angle", 26.0))
+        L = w - 1
+        tip_a = np.array([L, 0.0])
+        tip_b = np.array([L * math.cos(angle), L * math.sin(angle)])
+        chord = tip_b - tip_a
+        normal = np.array([-chord[1], chord[0]])
+        normal /= np.linalg.norm(normal)
+        if np.dot(-tip_a, normal) < 0:
+            normal = -normal  # point toward the joint
+        clen = np.linalg.norm(chord)
+        depth = p.get("scallop_depth", 0.16) * clen
+        for y in range(h):
+            for x in range(w):
+                a = math.atan2(y + 0.5, x + 0.5)
+                if a > angle + 0.02:
+                    keep[y, x] = False
+                    continue
+                rel = np.array([x + 0.5, y + 0.5]) - tip_a
+                along = np.clip(np.dot(rel, chord) / (clen * clen), 0, 1)
+                inward = np.dot(rel, normal)
+                if inward < depth * math.sin(math.pi * along):
+                    keep[y, x] = False
+    else:
+        scallop = p.get("scallop", 0)
+        for y in range(h):
+            for x in range(w):
+                fy = y / max(1, h - 1)
+                if scallop:
+                    period = w / scallop
+                    local = (x % period) / period
+                    depth = 0.08 + 0.10 * (1.0 - abs(local - 0.5) * 2)
+                    if fy > 1.0 - depth:
+                        keep[y, x] = False
+    img[~keep] = 0
+    glow[~keep] = 0
+    # Gold border on every cut edge (and the top edge, which is the bone): the reference's glowing gold rims.
+    border = np.zeros_like(keep)
     for y in range(h):
         for x in range(w):
-            cut = False
-            fx = x / max(1, w - 1)
-            fy = y / max(1, h - 1)
-            if taper == "outer":   # shrinks toward the wing tip (texture right edge is the outer side)
-                cut = fy > 1.0 - 0.85 * fx
-            elif taper == "inner":
-                cut = fy > 0.25 + 0.75 * fx
-            if scallop:
-                period = w / scallop
-                local = (x % period) / period
-                depth = 0.10 + 0.08 * math.sin(math.pi * local)
-                if fy > 1.0 - depth * (1.0 - abs(local - 0.5) * 2):
-                    cut = True
-            if cut:
-                img[y, x] = (0, 0, 0, 0)
-                glow[y, x] = (0, 0, 0, 0)
-    # Gold edging on the outline of what's left (the reference wings' glowing gold borders)
-    alpha = img[..., 3] > 0
-    edge_px = p.get("edge", 1)
-    for y in range(h):
-        for x in range(w):
-            if not alpha[y, x]:
+            if not keep[y, x]:
                 continue
-            border = (y < 1 and p.get("top_edge", True)) or x < edge_px and p.get("left_edge", False) \
-                or x >= w - edge_px and p.get("right_edge", False)
-            for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            if y <= 1:
+                border[y, x] = True
+                continue
+            for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1), (2, 0), (-2, 0), (0, 2), (0, -2)):
                 xx, yy = x + dx, y + dy
-                if 0 <= xx < w and 0 <= yy < h and not alpha[yy, xx]:
-                    border = True
-            if border:
-                img[y, x] = GOLD[4] if (x + y) % 3 else GOLD[5]
-                glow[y, x] = (255, 196, 80, 235)
-    return img, glow
+                if not (0 <= xx < w and 0 <= yy < h) or not keep[yy, xx]:
+                    if not (0 <= xx < w and 0 <= yy < h) and (xx < 0 or yy < 0):
+                        continue  # the joint side meets the next panel: no border there
+                    border[y, x] = True
+                    break
+    for y, x in zip(*np.nonzero(border)):
+        img[y, x] = GOLD[5] if (x + y) % 3 else GOLD[6]
+        glow[y, x] = (*G_GOLD, 255)
+    return finish(img, glow, p)
 
 
 def wing_bone(w, h, face, seed, p):
-    img, _ = scales(w, h, face, seed, {})
+    """Gold-armoured wing spar with a dark core line, glowing gold."""
+    img = blank(w, h)
     glow = blank(w, h)
-    if face in ("up", "north", "south"):
-        band = 0 if face != "up" else None
+    n = noise(w, h, seed, 4.0)
+    for y in range(h):
         for x in range(w):
-            if face == "up":
-                for y in range(h):
-                    if y in (h // 2, h // 2 - 1) or h <= 3:
-                        img[y, x] = GOLD[4]
-                        glow[y, x] = (255, 190, 70, 140)
-            else:
-                img[band, x] = GOLD[5]
-                if h > 3:
-                    img[1, x] = GOLD[3]
-                glow[band, x] = (255, 200, 90, 200)
-    return img, glow
+            centre = abs(y - (h - 1) / 2) / max(1, h / 2)
+            t = 4.6 - centre * 2.2 + (n[y, x] - 0.5)
+            img[y, x] = GOLD[int(np.clip(round(t), 0, 6))]
+            glow[y, x] = (*G_GOLD, 220 if centre < 0.5 else 150)
+            if (x // 4) % 6 == 0 and h > 4:
+                img[y, x] = GOLD[2]
+    return finish(img, glow, p)
 
 
 def horn(w, h, face, seed, p):
+    """Gold horn segment. Each segment is its own cube, so heat (0 base .. 1 tip) is a per-segment parameter:
+    the horn brightens and glows hotter toward its tip without depending on face UV orientation."""
+    heat = p.get("heat", 0.5)
+    n = noise(w, h, seed, 3.0)
     img = blank(w, h)
     glow = blank(w, h)
     for y in range(h):
         for x in range(w):
-            along = x / max(1, w - 1) if face in ("up", "down", "north", "south") else y / max(1, h - 1)
-            t = 2 + 3.5 * along + (1 if (x + y) % 4 == 0 else 0)
+            ridge = (x + y * 2) % 6 == 0
+            t = 2.8 + 2.8 * heat + (n[y, x] - 0.5) * 1.2 + (0.8 if ridge else 0)
             img[y, x] = GOLD[int(np.clip(round(t), 0, 6))]
-            if along > 0.7:
-                glow[y, x] = (255, 210, 110, int(200 * (along - 0.7) / 0.3))
-    return img, glow
+            glow[y, x] = (*G_GOLD, int(120 + 135 * heat ** 1.5))
+    return finish(img, glow, p)
 
 
 def eye(w, h, face, seed, p):
@@ -275,11 +353,11 @@ def eye(w, h, face, seed, p):
         for x in range(w):
             cx = abs(x - (w - 1) / 2) / max(1, w / 2)
             cy = abs(y - (h - 1) / 2) / max(1, h / 2)
-            d = max(cx, cy)
-            c = STAR if d < 0.34 else VIOLET[5] if d < 0.7 else VIOLET[3]
+            d = max(cx * 0.8, cy)
+            c = STAR if d < 0.35 else VIOLET[5] if d < 0.7 else VIOLET[3]
             img[y, x] = c
-            glow[y, x] = (235, 200, 255, 255) if d < 0.34 else (200, 90, 255, 255)
-    return img, glow
+            glow[y, x] = (*G_WHITE, 255) if d < 0.35 else (215, 110, 255, 255)
+    return finish(img, glow, p)
 
 
 def mouth(w, h, face, seed, p):
@@ -288,29 +366,29 @@ def mouth(w, h, face, seed, p):
     glow = blank(w, h)
     for y in range(h):
         for x in range(w):
-            ridge = y % 3 == 0
-            img[y, x] = VIOLET[1] if ridge else VIOLET[3]
-            glow[y, x] = (210, 80, 255, 140 if ridge else 220)
-    for _ in range(w * h // 18):
+            ridge = y % 4 == 0
+            img[y, x] = MAGENTA[1] if ridge else VIOLET[3]
+            glow[y, x] = (225, 90, 255, 160 if ridge else 255)
+    for _ in range(w * h // 14):
         x, y = rng.integers(0, w), rng.integers(0, h)
         img[y, x] = VIOLET[6]
-        glow[y, x] = (255, 220, 255, 255)
-    return img, glow
+        glow[y, x] = (*G_WHITE, 255)
+    return finish(img, glow, p)
 
 
 def teeth(w, h, face, seed, p):
     img = blank(w, h)
     up = p.get("up", False)
-    period = 3
+    period = 5
     for x in range(w):
         local = x % period
-        length = h if local == 1 else max(1, h - 1) if local == 0 else 0
-        for i in range(length):
+        length = [h - 2, h, h - 1, max(1, h - 3), 0][local]
+        for i in range(max(0, length)):
             y = (h - 1 - i) if up else i
             img[y, x] = IVORY[2] if i < length - 1 else IVORY[3]
-            if x % period == 2:
-                img[y, x] = (0, 0, 0, 0)
-    return img, None
+            if local == 0:
+                img[y, x] = IVORY[1]
+    return finish(img, None, p)
 
 
 def claw(w, h, face, seed, p):
@@ -321,10 +399,13 @@ def claw(w, h, face, seed, p):
         t = y / max(1, h - 1)
         heat = t if tip_down else 1 - t
         for x in range(w):
-            img[y, x] = VIOLET[int(np.clip(round(1 + heat * 4.5), 0, 6))] if heat > 0.35 else SCALE[1]
-            if heat > 0.6:
-                glow[y, x] = (200, 110, 255, int(255 * (heat - 0.6) / 0.4))
-    return img, glow
+            if heat > 0.45:
+                img[y, x] = VIOLET[int(np.clip(round(2 + heat * 4.5), 0, 6))]
+                glow[y, x] = (210, 120, 255, int(100 + 155 * (heat - 0.45) / 0.55))
+            else:
+                img[y, x] = GOLD[int(np.clip(round(2 + heat * 4), 0, 6))]
+                glow[y, x] = (*G_GOLD, 120)
+    return finish(img, glow, p)
 
 
 def rock(w, h, face, seed, p):
@@ -335,16 +416,16 @@ def rock(w, h, face, seed, p):
     glow = blank(w, h)
     for y in range(h):
         for x in range(w):
-            img[y, x] = SCALE[int(np.clip(1 + n[y, x] * 4, 0, 5))]
-    for _ in range(max(1, (w + h) // 6)):
+            img[y, x] = SCALE[int(np.clip(n[y, x] * 4, 0, 5))]
+    for _ in range(max(1, (w + h) // 5)):
         x, y = int(rng.integers(0, w)), int(rng.integers(0, h))
-        for _step in range(int(rng.integers(3, 8))):
+        for _step in range(int(rng.integers(3, 9))):
             hot = rng.random() < 0.35
             img[y, x] = GOLD[5] if hot else VIOLET[4]
-            glow[y, x] = (255, 200, 90, 255) if hot else (190, 90, 255, 255)
+            glow[y, x] = (*G_GOLD, 255) if hot else (*G_VIOLET, 255)
             x = int(np.clip(x + rng.integers(-1, 2), 0, w - 1))
             y = int(np.clip(y + rng.integers(-1, 2), 0, h - 1))
-    return img, glow
+    return finish(img, glow, p)
 
 
 def core(w, h, face, seed, p):
@@ -355,12 +436,12 @@ def core(w, h, face, seed, p):
             d = math.hypot((x - (w - 1) / 2) / max(1, w / 2), (y - (h - 1) / 2) / max(1, h / 2))
             img[y, x] = STAR if d < 0.4 else GOLD[5] if d < 0.7 else VIOLET[5]
             glow[y, x] = (255, 235, 200, 255) if d < 0.5 else (220, 120, 255, 255)
-    return img, glow
+    return finish(img, glow, p)
 
 
 PAINTERS = {
     "scale": scales,
-    "scale_sheen": lambda w, h, f, s, p: scales(w, h, f, s, {"sheen": 0.25}),
+    "scale_sheen": lambda w, h, f, s, p: scales(w, h, f, s, {**p, "sheen": 0.3}),
     "belly": belly,
     "gold": gold,
     "gold_rune": lambda w, h, f, s, p: gold(w, h, f, s, {**p, "rune": True}),
@@ -372,7 +453,7 @@ PAINTERS = {
     "eye": eye,
     "mouth": mouth,
     "teeth": teeth,
-    "teeth_up": lambda w, h, f, s, p: teeth(w, h, f, s, {"up": True}),
+    "teeth_up": lambda w, h, f, s, p: teeth(w, h, f, s, {**p, "up": True}),
     "claw": claw,
     "rock": rock,
     "core": core,

@@ -17,11 +17,18 @@ P = "animation.world_eater."
 WING_BONES = ("wing_{}", "wing_{}_mid", "wing_{}_tip")
 
 
-def wings(a, t, base, mid, tip, easing="easeInOutSine"):
-    """Sets both wings: values given for the left wing, mirrored for the right."""
+# Rest angle of each trailing finger above the leading one (world_eater.FINGERS): folding closes the fan.
+FINGER_FAN = (("finger_2", 26), ("finger_3", 52), ("finger_4", 78))
+
+
+def wings(a, t, base, mid, tip, easing="easeInOutSine", spread=1.0):
+    """Sets both wings: values given for the left wing, mirrored for the right.
+    spread 1 = fingers fully fanned (flight), 0 = fingers closed onto the leading finger (wing tucked)."""
     for side, sgn in (("left", 1), ("right", -1)):
         for bone, (x, y, z) in zip(WING_BONES, (base, mid, tip)):
             a.key(bone.format(side), "rotation", t, (x, y * sgn, z * sgn), easing)
+        for finger, fan in FINGER_FAN:
+            a.key(f"wing_{side}_{finger}", "rotation", t, (0, 0, -(1.0 - spread) * fan * 0.92 * sgn), easing)
 
 
 def arms(a, t, upper, fore=(0, 0, 0), easing="easeInOutSine"):
@@ -40,7 +47,7 @@ def legs(a, t, leg, shin=(0, 0, 0), foot=(0, 0, 0), easing="easeInOutSine"):
 
 
 def tail(a, t, yaw=0.0, pitch=0.0, lag=1.25, easing="easeInOutSine"):
-    for i in range(1, 6):
+    for i in range(1, 7):
         f = lag ** (i - 1)
         a.key(f"tail_{i}", "rotation", t, (pitch * (0.6 + 0.1 * i), yaw * f / 2.2, 0), easing)
 
@@ -87,7 +94,7 @@ def walk():
         a.rot("arm_right", (t, (-6 - 10 * phase, 0, 0)))
         neck(a, t, (2, -4 * phase, 0), (0, -2 * phase, 0), (-2, -3 * phase, 0), jaw=2)
         tail(a, t, yaw=-9 * phase)
-        wings(a, t, *FOLDED)
+        wings(a, t, *FOLDED, spread=0.1)
     return a
 
 
@@ -95,9 +102,9 @@ def flap(a, t0, period, amp=1.0, body_lift=3.0):
     """One full wingbeat starting at t0 (up -> down -> up)."""
     up = ((0, 2, -26 * amp), (0, 0, -18 * amp), (0, 0, -10 * amp))
     down = ((0, -4, 40 * amp), (0, 0, 22 * amp), (0, 0, 18 * amp))
-    wings(a, t0, *up)
+    wings(a, t0, *up, spread=0.7)
     wings(a, t0 + period * 0.45, *down, easing="easeInQuad")
-    wings(a, t0 + period, *up)
+    wings(a, t0 + period, *up, spread=0.7)
     a.pos("root", (t0, (0, 0, 0)), (t0 + period * 0.5, (0, body_lift, 0)), (t0 + period, (0, 0, 0)))
 
 
@@ -147,8 +154,8 @@ def death():
     arms(a, 3.6, (-60, 0, 50), (-40, 0, 0))
     neck(a, 3.6, (-30, 14, 0), (-10, 6, 0), (-24, 18, 0), jaw=14)
     neck(a, 6.0, (-34, 16, 0), (-10, 8, 0), (-26, 20, 0), jaw=10)
-    wings(a, 3.6, (0, -24, 64), (0, 0, 40), (0, 0, 30))
-    wings(a, 6.0, (0, -26, 70), (0, 0, 44), (0, 0, 32))
+    wings(a, 3.6, (0, -24, 64), (0, 0, 40), (0, 0, 30), spread=0.5)
+    wings(a, 6.0, (0, -26, 70), (0, 0, 44), (0, 0, 32), spread=0.45)
     tail(a, 3.6, yaw=14, pitch=-60)
     return a
 
@@ -184,7 +191,7 @@ def tail_sweep():
     neck(a, 1.3, (0, -10, 0), (0, -6, 0), (0, -6, 0), jaw=6)
     neck(a, 1.9, (0, 0, 0), (0, 0, 0), (0, 0, 0))
     wings(a, 0, (0, 0, 0), (0, 0, 0), (0, 0, 0))
-    wings(a, 0.45, (0, -24, 20), (0, 0, 30), (0, 0, 20))
+    wings(a, 0.45, (0, -24, 20), (0, 0, 30), (0, 0, 20), spread=0.45)
     wings(a, 1.9, (0, 0, 0), (0, 0, 0), (0, 0, 0))
     legs(a, 0, (0, 0, 0))
     legs(a, 0.45, (-10, 0, 0), (24, 0, 0), (-14, 0, 0))
@@ -276,8 +283,8 @@ def dive_slam():
     a = Animation(P + "dive_slam", 3.6, "hold_on_last_frame")
     flap(a, 0.0, 0.9, amp=1.1, body_lift=4.0)
     a.rot("body", (0, (24, 0, 0)), (0.9, (24, 0, 0)), (1.2, (82, 0, 0)), (3.6, (82, 0, 0)))
-    wings(a, 1.2, (0, -60, 46), (0, 0, 64), (0, 0, 40))
-    wings(a, 3.6, (0, -60, 46), (0, 0, 64), (0, 0, 40))
+    wings(a, 1.2, (0, -60, 46), (0, 0, 64), (0, 0, 40), spread=0.15)
+    wings(a, 3.6, (0, -60, 46), (0, 0, 64), (0, 0, 40), spread=0.15)
     neck(a, 0, (-18, 0, 0), (-6, 0, 0), (-6, 0, 0), jaw=2)
     neck(a, 1.2, (-14, 0, 0), (-4, 0, 0), (-10, 0, 0), jaw=30)
     neck(a, 3.6, (-14, 0, 0), (-4, 0, 0), (-10, 0, 0), jaw=30)

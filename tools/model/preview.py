@@ -61,8 +61,7 @@ def face_quads(cube):
         "up": (trb, trf, tlf, tlb), "down": (blb, blf, brf, brb),
     }
     for face, (u, v, w, h) in cube.uv.items():
-        fw, fh = cube.face_size(face)
-        uvs = ((u + fw, v), (u, v), (u, v + fh), (u + fw, v + fh))
+        uvs = ((u + w, v), (u, v), (u, v + h), (u + w, v + h))
         yield face, verts[face], uvs
 
 
