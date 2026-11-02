@@ -1,7 +1,6 @@
 package com.ananttomar.aetherfall.block;
 
 import net.minecraft.core.BlockPos;
-import net.minecraft.util.Mth;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
@@ -37,8 +36,9 @@ public class RunicVoidStoneBlock extends Block {
 
     /** Deterministic glyph for a position, so structures and hand-placed walls look the same everywhere. */
     public static int glyphFor(BlockPos pos) {
-        long seed = Mth.getSeed(pos.getX(), pos.getY(), pos.getZ());
-        return (int) Math.floorMod(seed >> 16, GLYPH_COUNT);
+        long h = (pos.getX() * 3129871L) ^ (pos.getZ() * 116129781L) ^ pos.getY();
+        h = h * h * 42317861L + h * 11L;
+        return (int) Math.floorMod(h >> 16, (long) GLYPH_COUNT);
     }
 
     @Override

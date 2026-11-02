@@ -20,6 +20,8 @@ public class ModItemModelProvider extends ItemModelProvider {
         basicItem(ModItems.WORLD_EATERS_CORE.get());
         basicItem(ModItems.VOID_SIGIL.get());
         basicItem(ModItems.MUSIC_DISC_WORLD_EATER.get());
+        withExistingParent(ModItems.WORLD_EATER_SPAWN_EGG.getId().getPath(), mcLoc("item/template_spawn_egg"));
+        withExistingParent(ModItems.VOIDLING_SPAWN_EGG.getId().getPath(), mcLoc("item/template_spawn_egg"));
 
         blockParent("void_stone_brick_stairs", "void_stone_brick_stairs");
         blockParent("void_stone_brick_slab", "void_stone_brick_slab");

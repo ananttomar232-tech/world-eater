@@ -25,7 +25,8 @@ your `mods` folder.
 ```bash
 ./gradlew runClient   # development client
 ./gradlew runServer   # dedicated server
-./gradlew runData     # regenerate block states, models, tags and loot tables into src/generated
+./gradlew runData     # regenerate block states, models, tags, loot tables and damage types into src/generated
+./gradlew runGameTestServer   # run the automated boss tests (16 tests: scaling, phases, every attack, Erosion, death)
 ```
 
 ## Original assets
