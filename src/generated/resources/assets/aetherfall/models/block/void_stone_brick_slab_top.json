@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/slab_top",
+  "textures": {
+    "bottom": "aetherfall:block/void_stone_bricks",
+    "side": "aetherfall:block/void_stone_bricks",
+    "top": "aetherfall:block/void_stone_bricks"
+  }
+}

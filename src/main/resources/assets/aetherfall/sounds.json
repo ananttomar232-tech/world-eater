@@ -1,0 +1,352 @@
+{
+  "entity.world_eater.ambient": {
+    "sounds": [
+      {
+        "name": "aetherfall:entity/world_eater/ambient1",
+        "attenuation_distance": 64
+      },
+      {
+        "name": "aetherfall:entity/world_eater/ambient2",
+        "attenuation_distance": 64
+      },
+      {
+        "name": "aetherfall:entity/world_eater/ambient3",
+        "attenuation_distance": 64
+      }
+    ],
+    "subtitle": "subtitles.aetherfall.entity.world_eater.ambient"
+  },
+  "entity.world_eater.hurt": {
+    "sounds": [
+      {
+        "name": "aetherfall:entity/world_eater/hurt1",
+        "attenuation_distance": 48
+      },
+      {
+        "name": "aetherfall:entity/world_eater/hurt2",
+        "attenuation_distance": 48
+      },
+      {
+        "name": "aetherfall:entity/world_eater/hurt3",
+        "attenuation_distance": 48
+      }
+    ],
+    "subtitle": "subtitles.aetherfall.entity.world_eater.hurt"
+  },
+  "entity.world_eater.death": {
+    "sounds": [
+      {
+        "name": "aetherfall:entity/world_eater/death",
+        "attenuation_distance": 160
+      }
+    ],
+    "subtitle": "subtitles.aetherfall.entity.world_eater.death"
+  },
+  "entity.world_eater.roar": {
+    "sounds": [
+      {
+        "name": "aetherfall:entity/world_eater/roar1",
+        "attenuation_distance": 96
+      },
+      {
+        "name": "aetherfall:entity/world_eater/roar2",
+        "attenuation_distance": 96
+      }
+    ],
+    "subtitle": "subtitles.aetherfall.entity.world_eater.roar"
+  },
+  "entity.world_eater.step": {
+    "sounds": [
+      {
+        "name": "aetherfall:entity/world_eater/step1",
+        "attenuation_distance": 32
+      },
+      {
+        "name": "aetherfall:entity/world_eater/step2",
+        "attenuation_distance": 32
+      },
+      {
+        "name": "aetherfall:entity/world_eater/step3",
+        "attenuation_distance": 32
+      }
+    ],
+    "subtitle": "subtitles.aetherfall.entity.world_eater.step"
+  },
+  "entity.world_eater.wing_flap": {
+    "sounds": [
+      {
+        "name": "aetherfall:entity/world_eater/wing_flap1",
+        "attenuation_distance": 48
+      },
+      {
+        "name": "aetherfall:entity/world_eater/wing_flap2",
+        "attenuation_distance": 48
+      },
+      {
+        "name": "aetherfall:entity/world_eater/wing_flap3",
+        "attenuation_distance": 48
+      }
+    ],
+    "subtitle": "subtitles.aetherfall.entity.world_eater.wing_flap"
+  },
+  "entity.world_eater.takeoff": {
+    "sounds": [
+      {
+        "name": "aetherfall:entity/world_eater/takeoff",
+        "attenuation_distance": 64
+      }
+    ],
+    "subtitle": "subtitles.aetherfall.entity.world_eater.takeoff"
+  },
+  "entity.world_eater.land": {
+    "sounds": [
+      {
+        "name": "aetherfall:entity/world_eater/land1",
+        "attenuation_distance": 64
+      },
+      {
+        "name": "aetherfall:entity/world_eater/land2",
+        "attenuation_distance": 64
+      }
+    ],
+    "subtitle": "subtitles.aetherfall.entity.world_eater.land"
+  },
+  "entity.world_eater.swipe": {
+    "sounds": [
+      {
+        "name": "aetherfall:entity/world_eater/swipe1",
+        "attenuation_distance": 32
+      },
+      {
+        "name": "aetherfall:entity/world_eater/swipe2",
+        "attenuation_distance": 32
+      },
+      {
+        "name": "aetherfall:entity/world_eater/swipe3",
+        "attenuation_distance": 32
+      }
+    ],
+    "subtitle": "subtitles.aetherfall.entity.world_eater.swipe"
+  },
+  "entity.world_eater.tail_sweep": {
+    "sounds": [
+      {
+        "name": "aetherfall:entity/world_eater/tail_sweep1",
+        "attenuation_distance": 32
+      },
+      {
+        "name": "aetherfall:entity/world_eater/tail_sweep2",
+        "attenuation_distance": 32
+      }
+    ],
+    "subtitle": "subtitles.aetherfall.entity.world_eater.tail_sweep"
+  },
+  "entity.world_eater.wing_gust": {
+    "sounds": [
+      {
+        "name": "aetherfall:entity/world_eater/wing_gust",
+        "attenuation_distance": 48
+      }
+    ],
+    "subtitle": "subtitles.aetherfall.entity.world_eater.wing_gust"
+  },
+  "entity.world_eater.breath_charge": {
+    "sounds": [
+      {
+        "name": "aetherfall:entity/world_eater/breath_charge",
+        "attenuation_distance": 64
+      }
+    ],
+    "subtitle": "subtitles.aetherfall.entity.world_eater.breath_charge"
+  },
+  "entity.world_eater.breath_loop": {
+    "sounds": [
+      {
+        "name": "aetherfall:entity/world_eater/breath_loop",
+        "attenuation_distance": 64
+      }
+    ],
+    "subtitle": "subtitles.aetherfall.entity.world_eater.breath_loop"
+  },
+  "entity.world_eater.meteor_summon": {
+    "sounds": [
+      {
+        "name": "aetherfall:entity/world_eater/meteor_summon",
+        "attenuation_distance": 128
+      }
+    ],
+    "subtitle": "subtitles.aetherfall.entity.world_eater.meteor_summon"
+  },
+  "entity.world_eater.gravity_well": {
+    "sounds": [
+      {
+        "name": "aetherfall:entity/world_eater/gravity_well",
+        "attenuation_distance": 48
+      }
+    ],
+    "subtitle": "subtitles.aetherfall.entity.world_eater.gravity_well"
+  },
+  "entity.world_eater.phase_shift": {
+    "sounds": [
+      {
+        "name": "aetherfall:entity/world_eater/phase_shift",
+        "attenuation_distance": 128
+      }
+    ],
+    "subtitle": "subtitles.aetherfall.entity.world_eater.phase_shift"
+  },
+  "entity.void_meteor.fall": {
+    "sounds": [
+      {
+        "name": "aetherfall:entity/void_meteor/fall1",
+        "attenuation_distance": 64
+      },
+      {
+        "name": "aetherfall:entity/void_meteor/fall2",
+        "attenuation_distance": 64
+      }
+    ],
+    "subtitle": "subtitles.aetherfall.entity.void_meteor.fall"
+  },
+  "entity.void_meteor.impact": {
+    "sounds": [
+      {
+        "name": "aetherfall:entity/void_meteor/impact1",
+        "attenuation_distance": 64
+      },
+      {
+        "name": "aetherfall:entity/void_meteor/impact2",
+        "attenuation_distance": 64
+      },
+      {
+        "name": "aetherfall:entity/void_meteor/impact3",
+        "attenuation_distance": 64
+      }
+    ],
+    "subtitle": "subtitles.aetherfall.entity.void_meteor.impact"
+  },
+  "entity.voidling.ambient": {
+    "sounds": [
+      {
+        "name": "aetherfall:entity/voidling/ambient1"
+      },
+      {
+        "name": "aetherfall:entity/voidling/ambient2"
+      }
+    ],
+    "subtitle": "subtitles.aetherfall.entity.voidling.ambient"
+  },
+  "entity.voidling.hurt": {
+    "sounds": [
+      {
+        "name": "aetherfall:entity/voidling/hurt1"
+      },
+      {
+        "name": "aetherfall:entity/voidling/hurt2"
+      }
+    ],
+    "subtitle": "subtitles.aetherfall.entity.voidling.hurt"
+  },
+  "entity.voidling.death": {
+    "sounds": [
+      {
+        "name": "aetherfall:entity/voidling/death"
+      }
+    ],
+    "subtitle": "subtitles.aetherfall.entity.voidling.death"
+  },
+  "block.void_altar.activate": {
+    "sounds": [
+      {
+        "name": "aetherfall:block/void_altar/activate",
+        "attenuation_distance": 64
+      }
+    ],
+    "subtitle": "subtitles.aetherfall.block.void_altar.activate"
+  },
+  "block.void_altar.ambient": {
+    "sounds": [
+      {
+        "name": "aetherfall:block/void_altar/ambient",
+        "volume": 0.6
+      }
+    ],
+    "subtitle": "subtitles.aetherfall.block.void_altar.ambient"
+  },
+  "block.runic_void_stone.awaken": {
+    "sounds": [
+      {
+        "name": "aetherfall:block/runic_void_stone/awaken1"
+      },
+      {
+        "name": "aetherfall:block/runic_void_stone/awaken2"
+      }
+    ],
+    "subtitle": "subtitles.aetherfall.block.runic_void_stone.awaken"
+  },
+  "item.void_greatsword.slash": {
+    "sounds": [
+      {
+        "name": "aetherfall:item/void_greatsword/slash1"
+      },
+      {
+        "name": "aetherfall:item/void_greatsword/slash2"
+      }
+    ],
+    "subtitle": "subtitles.aetherfall.item.void_greatsword.slash"
+  },
+  "item.world_eater_staff.fire": {
+    "sounds": [
+      {
+        "name": "aetherfall:item/world_eater_staff/fire1"
+      },
+      {
+        "name": "aetherfall:item/world_eater_staff/fire2"
+      }
+    ],
+    "subtitle": "subtitles.aetherfall.item.world_eater_staff.fire"
+  },
+  "item.armor.equip_void_scale": {
+    "sounds": [
+      {
+        "name": "aetherfall:item/armor/equip_void_scale1"
+      },
+      {
+        "name": "aetherfall:item/armor/equip_void_scale2"
+      }
+    ],
+    "subtitle": "subtitles.aetherfall.item.armor.equip_void_scale"
+  },
+  "item.void_scale_armor.blink": {
+    "sounds": [
+      {
+        "name": "aetherfall:item/void_scale_armor/blink"
+      }
+    ],
+    "subtitle": "subtitles.aetherfall.item.void_scale_armor.blink"
+  },
+  "effect.erosion.apply": {
+    "sounds": [
+      {
+        "name": "aetherfall:effect/erosion/apply"
+      }
+    ],
+    "subtitle": "subtitles.aetherfall.effect.erosion.apply"
+  },
+  "music.world_eater": {
+    "sounds": [
+      {
+        "name": "aetherfall:music/world_eater",
+        "stream": true
+      }
+    ]
+  },
+  "music_disc.world_eater": {
+    "sounds": [
+      {
+        "name": "aetherfall:music/world_eater",
+        "stream": true
+      }
+    ]
+  }
+}

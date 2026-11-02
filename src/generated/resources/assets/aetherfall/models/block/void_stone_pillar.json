@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:block/cube_column",
+  "textures": {
+    "end": "aetherfall:block/void_stone_pillar_top",
+    "side": "aetherfall:block/void_stone_pillar"
+  }
+}

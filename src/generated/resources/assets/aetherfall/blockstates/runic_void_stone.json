@@ -1,0 +1,28 @@
+{
+  "variants": {
+    "awakened=false,glyph=0": {
+      "model": "aetherfall:block/runic_void_stone_glyph_0"
+    },
+    "awakened=false,glyph=1": {
+      "model": "aetherfall:block/runic_void_stone_glyph_1"
+    },
+    "awakened=false,glyph=2": {
+      "model": "aetherfall:block/runic_void_stone_glyph_2"
+    },
+    "awakened=false,glyph=3": {
+      "model": "aetherfall:block/runic_void_stone_glyph_3"
+    },
+    "awakened=true,glyph=0": {
+      "model": "aetherfall:block/runic_void_stone_glyph_0_awakened"
+    },
+    "awakened=true,glyph=1": {
+      "model": "aetherfall:block/runic_void_stone_glyph_1_awakened"
+    },
+    "awakened=true,glyph=2": {
+      "model": "aetherfall:block/runic_void_stone_glyph_2_awakened"
+    },
+    "awakened=true,glyph=3": {
+      "model": "aetherfall:block/runic_void_stone_glyph_3_awakened"
+    }
+  }
+}
