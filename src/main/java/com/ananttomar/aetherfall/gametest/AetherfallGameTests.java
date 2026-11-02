@@ -35,7 +35,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 @PrefixGameTestTemplate(false)
 public final class AetherfallGameTests {
     private static final String ARENA = "gametest/arena";
-    private static final BlockPos BOSS_POS = new BlockPos(20, 1, 20);
+    /** Helper coordinates: the arena structure sits one block above the test origin, so its floor is y = 1. */
+    private static final BlockPos BOSS_POS = new BlockPos(20, 2, 20);
 
     private AetherfallGameTests() {
     }
@@ -91,7 +92,7 @@ public final class AetherfallGameTests {
     @GameTest(template = ARENA, batch = "death", timeoutTicks = 300)
     public static void deathSequenceRemovesBossAndDissolvesBrood(GameTestHelper helper) {
         AetherfallEntity boss = helper.spawn(ModEntities.WORLD_EATER.get(), BOSS_POS);
-        VoidlingEntity voidling = helper.spawn(ModEntities.VOIDLING.get(), new BlockPos(5, 1, 5));
+        VoidlingEntity voidling = helper.spawn(ModEntities.VOIDLING.get(), new BlockPos(5, 2, 5));
         voidling.setOwner(boss);
         helper.startSequence()
                 .thenIdle(3)
@@ -109,7 +110,7 @@ public final class AetherfallGameTests {
     @GameTest(template = ARENA, batch = "director", timeoutTicks = 400)
     public static void directorChoosesAttacksOnItsOwn(GameTestHelper helper) {
         AetherfallEntity boss = helper.spawn(ModEntities.WORLD_EATER.get(), BOSS_POS);
-        IronGolem dummy = dummy(helper, new BlockPos(20, 1, 30));
+        IronGolem dummy = dummy(helper, new BlockPos(20, 2, 30));
         boss.setTarget(dummy);
         helper.succeedWhen(() -> helper.assertTrue(boss.getAttack() != AttackType.NONE, "Boss should start an attack by itself"));
     }
@@ -120,13 +121,13 @@ public final class AetherfallGameTests {
 
     @GameTest(template = ARENA, batch = "swipe", timeoutTicks = 200)
     public static void swipeDamagesAndLaunches(GameTestHelper helper) {
-        AttackRun run = attack(helper, AttackType.SWIPE, 1, false, new BlockPos(20, 1, 25));
+        AttackRun run = attack(helper, AttackType.SWIPE, 1, false, new BlockPos(20, 2, 25));
         run.then(() -> helper.assertTrue(run.dummy.getHealth() < run.dummy.getMaxHealth(), "Swipe should damage the target"));
     }
 
     @GameTest(template = ARENA, batch = "tail", timeoutTicks = 200)
     public static void tailSweepHitsAllAroundAndErodes(GameTestHelper helper) {
-        AttackRun run = attack(helper, AttackType.TAIL_SWEEP, 1, false, new BlockPos(14, 1, 20));
+        AttackRun run = attack(helper, AttackType.TAIL_SWEEP, 1, false, new BlockPos(14, 2, 20));
         run.then(() -> {
             helper.assertTrue(run.dummy.getHealth() < run.dummy.getMaxHealth(), "Tail sweep should damage the target");
             helper.assertTrue(run.dummy.hasEffect(ModEffects.EROSION.get()), "Tail sweep should apply Erosion");
@@ -135,7 +136,7 @@ public final class AetherfallGameTests {
 
     @GameTest(template = ARENA, batch = "breath", timeoutTicks = 300)
     public static void voidBreathBurnsAndErodes(GameTestHelper helper) {
-        AttackRun run = attack(helper, AttackType.VOID_BREATH, 1, false, new BlockPos(20, 1, 34));
+        AttackRun run = attack(helper, AttackType.VOID_BREATH, 1, false, new BlockPos(20, 2, 34));
         AtomicBoolean beamSeen = new AtomicBoolean();
         helper.onEachTick(() -> {
             if (run.boss.isBeamActive()) {
@@ -153,7 +154,7 @@ public final class AetherfallGameTests {
 
     @GameTest(template = ARENA, batch = "meteor", timeoutTicks = 400)
     public static void meteorShowerRainsMeteorsThatSpareTheBoss(GameTestHelper helper) {
-        AttackRun run = attack(helper, AttackType.METEOR_SHOWER, 2, false, new BlockPos(20, 1, 36));
+        AttackRun run = attack(helper, AttackType.METEOR_SHOWER, 2, false, new BlockPos(20, 2, 36));
         AtomicInteger maxMeteors = new AtomicInteger();
         helper.onEachTick(() -> {
             int count = helper.getLevel().getEntitiesOfClass(VoidMeteorEntity.class, run.boss.getBoundingBox().inflate(80.0D)).size();
@@ -167,13 +168,13 @@ public final class AetherfallGameTests {
 
     @GameTest(template = ARENA, batch = "gust", timeoutTicks = 200)
     public static void wingGustHurlsTargetAway(GameTestHelper helper) {
-        AttackRun run = attack(helper, AttackType.WING_GUST, 1, false, new BlockPos(20, 1, 30));
+        AttackRun run = attack(helper, AttackType.WING_GUST, 1, false, new BlockPos(20, 2, 30));
         run.then(() -> helper.assertTrue(run.dummy.getHealth() < run.dummy.getMaxHealth(), "Wing gust should hit the target"));
     }
 
     @GameTest(template = ARENA, batch = "dive", timeoutTicks = 300)
     public static void diveSlamEndsOnTheGround(GameTestHelper helper) {
-        AttackRun run = attack(helper, AttackType.DIVE_SLAM, 1, true, new BlockPos(20, 1, 30));
+        AttackRun run = attack(helper, AttackType.DIVE_SLAM, 1, true, new BlockPos(20, 2, 30));
         run.then(() -> {
             helper.assertFalse(run.boss.isFlying(), "Dive slam should end grounded");
             helper.assertTrue(run.dummy.getHealth() < run.dummy.getMaxHealth(), "Dive slam shockwave should hit the target");
@@ -181,21 +182,27 @@ public final class AetherfallGameTests {
     }
 
     @GameTest(template = ARENA, batch = "well", timeoutTicks = 300)
-    public static void gravityWellPullsThenImplodes(GameTestHelper helper) {
-        AttackRun run = attack(helper, AttackType.GRAVITY_WELL, 2, false, new BlockPos(20, 1, 36));
-        run.then(() -> helper.assertTrue(run.dummy.getHealth() < run.dummy.getMaxHealth() || run.dummy.position().z < run.start.z,
-                "Gravity well should pull or hurt the target"));
+    public static void gravityWellPullsTargetsIn(GameTestHelper helper) {
+        AetherfallEntity boss = helper.spawn(ModEntities.WORLD_EATER.get(), BOSS_POS);
+        // A NoAI mob never applies its velocity, so the pull needs a dummy that can move: AI on, every goal removed.
+        IronGolem dummy = dummy(helper, new BlockPos(20, 2, 36));
+        dummy.setNoAi(false);
+        dummy.goalSelector.removeAllGoals(goal -> true);
+        dummy.targetSelector.removeAllGoals(goal -> true);
+        AttackRun run = new AttackRun(helper, boss, dummy, AttackType.GRAVITY_WELL, 2, false);
+        run.then(() -> helper.assertTrue(run.dummy.position().z < run.start.z - 1.0D,
+                "Gravity well should drag the target toward the boss (z " + run.start.z + " -> " + run.dummy.position().z + ")"));
     }
 
     @GameTest(template = ARENA, batch = "summon", timeoutTicks = 200)
     public static void summonCallsBoundVoidlings(GameTestHelper helper) {
-        AttackRun run = attack(helper, AttackType.SUMMON_VOIDLINGS, 2, false, new BlockPos(20, 1, 34));
+        AttackRun run = attack(helper, AttackType.SUMMON_VOIDLINGS, 2, false, new BlockPos(20, 2, 34));
         run.then(() -> helper.assertTrue(run.boss.countVoidlings() >= 3, "Expected at least 3 Voidlings, got " + run.boss.countVoidlings()));
     }
 
     @GameTest(template = ARENA, batch = "takeoff", timeoutTicks = 200)
     public static void takeoffLeavesTheGround(GameTestHelper helper) {
-        AttackRun run = attack(helper, AttackType.TAKEOFF, 1, false, new BlockPos(20, 1, 34));
+        AttackRun run = attack(helper, AttackType.TAKEOFF, 1, false, new BlockPos(20, 2, 34));
         run.then(() -> {
             helper.assertTrue(run.boss.isFlying(), "Boss should be flying after takeoff");
             helper.assertTrue(run.boss.getY() > run.bossStart.y + 5.0D, "Boss should have climbed, y=" + run.boss.getY());
@@ -204,7 +211,7 @@ public final class AetherfallGameTests {
 
     @GameTest(template = ARENA, batch = "land", timeoutTicks = 200)
     public static void landReturnsToTheGround(GameTestHelper helper) {
-        AttackRun run = attack(helper, AttackType.LAND, 1, true, new BlockPos(20, 1, 34));
+        AttackRun run = attack(helper, AttackType.LAND, 1, true, new BlockPos(20, 2, 34));
         run.then(() -> {
             helper.assertFalse(run.boss.isFlying(), "Boss should be grounded after landing");
             helper.assertTrue(run.boss.onGround(), "Boss should be standing on the floor");
@@ -217,7 +224,7 @@ public final class AetherfallGameTests {
 
     @GameTest(template = ARENA, batch = "erosion", timeoutTicks = 100)
     public static void erosionStacksToFiveAndStripsArmor(GameTestHelper helper) {
-        IronGolem dummy = dummy(helper, new BlockPos(20, 1, 20));
+        IronGolem dummy = dummy(helper, new BlockPos(20, 2, 20));
         double armorBefore = dummy.getAttributeValue(Attributes.ARMOR);
         int stacks = 0;
         for (int i = 0; i < 7; i++) {

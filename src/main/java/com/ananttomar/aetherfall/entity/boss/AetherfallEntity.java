@@ -16,7 +16,10 @@ import com.ananttomar.aetherfall.entity.boss.goal.VoidBreathGoal;
 import com.ananttomar.aetherfall.entity.boss.goal.WingGustGoal;
 import com.ananttomar.aetherfall.entity.minion.VoidlingEntity;
 import com.ananttomar.aetherfall.entity.projectile.VoidMeteorEntity;
+import com.ananttomar.aetherfall.network.AetherfallNetwork;
+import com.ananttomar.aetherfall.network.BossBarMarkerMessage;
 import com.ananttomar.aetherfall.registry.ModEffects;
+import com.ananttomar.aetherfall.registry.ModParticles;
 import com.ananttomar.aetherfall.registry.ModSounds;
 import com.ananttomar.aetherfall.tag.ModTags;
 import net.minecraft.core.BlockPos;
@@ -28,11 +31,13 @@ import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerBossEvent;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.util.Mth;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.BossEvent;
 import net.minecraft.world.Difficulty;
 import net.minecraft.world.damagesource.DamageSource;
@@ -107,11 +112,16 @@ public class AetherfallEntity extends Monster implements GeoEntity {
 
     // Animations
     public static final String ANIM_PREFIX = "animation.world_eater.";
+    public static final String ATTACK_CONTROLLER = "attack";
     public static final RawAnimation IDLE = RawAnimation.begin().thenLoop(ANIM_PREFIX + "idle");
     public static final RawAnimation WALK = RawAnimation.begin().thenLoop(ANIM_PREFIX + "walk");
     public static final RawAnimation FLY_HOVER = RawAnimation.begin().thenLoop(ANIM_PREFIX + "fly_hover");
     public static final RawAnimation FLY_GLIDE = RawAnimation.begin().thenLoop(ANIM_PREFIX + "fly_glide");
     public static final RawAnimation DEATH = RawAnimation.begin().thenPlayAndHold(ANIM_PREFIX + "death");
+    /** Server-triggered the instant the Dive Slam hits the ground. */
+    public static final RawAnimation DIVE_IMPACT = RawAnimation.begin().thenPlay(ANIM_PREFIX + "dive_impact");
+    /** Server-triggered the instant a landing touches down. */
+    public static final RawAnimation LAND_IMPACT = RawAnimation.begin().thenPlay(ANIM_PREFIX + "land_impact");
     private static final RawAnimation[] ATTACK_ANIMATIONS = new RawAnimation[AttackType.values().length];
 
     static {
@@ -120,6 +130,8 @@ public class AetherfallEntity extends Monster implements GeoEntity {
                 ATTACK_ANIMATIONS[type.id] = RawAnimation.begin()
                         .thenPlay(ANIM_PREFIX + "breath_charge")
                         .thenLoop(ANIM_PREFIX + "breath");
+            } else if (type == AttackType.LAND) {
+                ATTACK_ANIMATIONS[type.id] = RawAnimation.begin().thenLoop(ANIM_PREFIX + type.animation);
             } else if (type != AttackType.NONE) {
                 ATTACK_ANIMATIONS[type.id] = RawAnimation.begin().thenPlayAndHold(ANIM_PREFIX + type.animation);
             }
@@ -148,6 +160,14 @@ public class AetherfallEntity extends Monster implements GeoEntity {
     @Nullable
     private BlockPos homePos;
     private int clientAttackSerialSeen = -1;
+
+    // Client only: bone positions captured by the renderer each frame (world space), used for particles.
+    @Nullable
+    public Vec3 clientMouth;
+    @Nullable
+    public Vec3 clientWingTipLeft;
+    @Nullable
+    public Vec3 clientWingTipRight;
 
     public AetherfallEntity(EntityType<? extends Monster> type, Level level) {
         super(type, level);
@@ -255,12 +275,16 @@ public class AetherfallEntity extends Monster implements GeoEntity {
         for (Player player : level().players()) {
             if (player instanceof ServerPlayer sp && sp.isAlive() && distanceToSqr(sp) < BOSS_BAR_RANGE * BOSS_BAR_RANGE) {
                 keep.add(sp);
-                bossEvent.addPlayer(sp);
+                if (!bossEvent.getPlayers().contains(sp)) {
+                    AetherfallNetwork.sendTo(sp, new BossBarMarkerMessage(bossEvent.getId(), true));
+                    bossEvent.addPlayer(sp);
+                }
             }
         }
         for (ServerPlayer sp : List.copyOf(bossEvent.getPlayers())) {
             if (!keep.contains(sp)) {
                 bossEvent.removePlayer(sp);
+                AetherfallNetwork.sendTo(sp, new BossBarMarkerMessage(bossEvent.getId(), false));
             }
         }
     }
@@ -545,6 +569,9 @@ public class AetherfallEntity extends Monster implements GeoEntity {
                 playSound(ModSounds.VOID_METEOR_IMPACT.get(), 2.0F, 0.6F + deathTime / 200.0F);
             }
             if (deathTime >= DEATH_DURATION && !isRemoved()) {
+                if (level() instanceof ServerLevel server) {
+                    AetherfallNetwork.shake(server, position(), 64.0D, 1.0F, 40);
+                }
                 level().broadcastEntityEvent(this, (byte) 60);
                 remove(RemovalReason.KILLED);
             }
@@ -553,8 +580,116 @@ public class AetherfallEntity extends Monster implements GeoEntity {
 
     @Override
     public void remove(RemovalReason reason) {
+        if (!level().isClientSide) {
+            for (ServerPlayer sp : List.copyOf(bossEvent.getPlayers())) {
+                AetherfallNetwork.sendTo(sp, new BossBarMarkerMessage(bossEvent.getId(), false));
+            }
+        }
         bossEvent.removeAllPlayers();
         super.remove(reason);
+    }
+
+    // ------------------------------------------------------------------------------------------------------------
+    // Client-side effects
+    // ------------------------------------------------------------------------------------------------------------
+
+    @Override
+    public void tick() {
+        super.tick();
+        if (level().isClientSide) {
+            clientEffects();
+        }
+    }
+
+    private void clientEffects() {
+        RandomSource r = random;
+        Level level = level();
+        double w = getBbWidth();
+        double h = getBbHeight();
+        Vec3 mouth = clientMouth != null ? clientMouth : mouthPosition();
+
+        if (r.nextInt(3) < AetherfallConfig.particles(1, r)) {
+            level.addParticle(ModParticles.STAR_MOTE.get(), getX() + (r.nextDouble() - 0.5D) * w, getY() + r.nextDouble() * h,
+                    getZ() + (r.nextDouble() - 0.5D) * w, 0.0D, 0.015D, 0.0D);
+        }
+        if (isDeadOrDying()) {
+            int count = AetherfallConfig.particles(2 + deathTime / 8, r);
+            for (int i = 0; i < count; i++) {
+                level.addParticle(i % 3 == 0 ? ModParticles.VOID_EMBER.get() : ModParticles.VOID_SPARK.get(),
+                        getX() + (r.nextDouble() - 0.5D) * w * 1.4D, getY() + r.nextDouble() * h * 0.8D,
+                        getZ() + (r.nextDouble() - 0.5D) * w * 1.4D,
+                        (r.nextDouble() - 0.5D) * 0.05D, 0.08D + r.nextDouble() * 0.2D, (r.nextDouble() - 0.5D) * 0.05D);
+            }
+            return;
+        }
+        if (isFlying()) {
+            for (Vec3 tip : new Vec3[]{clientWingTipLeft, clientWingTipRight}) {
+                if (tip != null && AetherfallConfig.particles(1, r) > 0) {
+                    level.addParticle(ModParticles.STAR_MOTE.get(), tip.x, tip.y, tip.z,
+                            (r.nextDouble() - 0.5D) * 0.04D, -0.02D, (r.nextDouble() - 0.5D) * 0.04D);
+                }
+            }
+        }
+        AttackType attack = getAttack();
+        if (attack == AttackType.VOID_BREATH && !isBeamActive()) {
+            // Light gathering into the jaws
+            for (int i = 0, n = AetherfallConfig.particles(3, r); i < n; i++) {
+                Vec3 from = mouth.add((r.nextDouble() - 0.5D) * 6.0D, (r.nextDouble() - 0.5D) * 6.0D, (r.nextDouble() - 0.5D) * 6.0D);
+                Vec3 v = mouth.subtract(from).scale(0.12D);
+                level.addParticle(i == 0 ? ModParticles.GOLD_SPARK.get() : ModParticles.VOID_SPARK.get(), from.x, from.y, from.z, v.x, v.y, v.z);
+            }
+        }
+        if (isBeamActive()) {
+            Vec3 end = getBeamEnd();
+            Vec3 along = end.subtract(mouth);
+            for (int i = 0, n = AetherfallConfig.particles(4, r); i < n; i++) {
+                Vec3 p = mouth.add(along.scale(r.nextDouble()));
+                level.addParticle(ModParticles.VOID_FLAME.get(), p.x + (r.nextDouble() - 0.5D) * 0.8D, p.y + (r.nextDouble() - 0.5D) * 0.8D,
+                        p.z + (r.nextDouble() - 0.5D) * 0.8D, 0.0D, 0.02D, 0.0D);
+            }
+            for (int i = 0, n = AetherfallConfig.particles(5, r); i < n; i++) {
+                level.addParticle(i % 2 == 0 ? ModParticles.GOLD_SPARK.get() : ModParticles.VOID_SPARK.get(), end.x, end.y, end.z,
+                        (r.nextDouble() - 0.5D) * 0.6D, r.nextDouble() * 0.45D, (r.nextDouble() - 0.5D) * 0.6D);
+            }
+        }
+        if (attack == AttackType.GRAVITY_WELL) {
+            for (int i = 0, n = AetherfallConfig.particles(4, r); i < n; i++) {
+                double angle = r.nextDouble() * Math.PI * 2.0D;
+                double radius = 4.0D + r.nextDouble() * 10.0D;
+                Vec3 from = mouth.add(Math.cos(angle) * radius, (r.nextDouble() - 0.5D) * 4.0D, Math.sin(angle) * radius);
+                Vec3 in = mouth.subtract(from).scale(0.06D);
+                Vec3 swirl = new Vec3(-Math.sin(angle), 0.0D, Math.cos(angle)).scale(0.25D);
+                level.addParticle(ModParticles.VOID_SPARK.get(), from.x, from.y, from.z, in.x + swirl.x, in.y, in.z + swirl.z);
+            }
+        }
+        if (attack == AttackType.METEOR_SHOWER || attack == AttackType.PHASE_ROAR || attack == AttackType.SUMMON_VOIDLINGS) {
+            for (int i = 0, n = AetherfallConfig.particles(3, r); i < n; i++) {
+                level.addParticle(ModParticles.VOID_EMBER.get(), getX() + (r.nextDouble() - 0.5D) * w * 3.0D, getY() + 0.2D,
+                        getZ() + (r.nextDouble() - 0.5D) * w * 3.0D, 0.0D, 0.05D + r.nextDouble() * 0.1D, 0.0D);
+            }
+            if (attack == AttackType.METEOR_SHOWER && AetherfallConfig.particles(1, r) > 0) {
+                level.addParticle(ModParticles.GOLD_SPARK.get(), mouth.x, mouth.y, mouth.z,
+                        (r.nextDouble() - 0.5D) * 0.2D, 0.8D + r.nextDouble() * 0.6D, (r.nextDouble() - 0.5D) * 0.2D);
+            }
+        }
+    }
+
+    @Override
+    public void handleEntityEvent(byte id) {
+        if (id == 60) {
+            RandomSource r = random;
+            for (int i = 0, n = AetherfallConfig.particles(160, r); i < n; i++) {
+                double vx = (r.nextDouble() - 0.5D) * 1.2D;
+                double vy = r.nextDouble() * 0.9D;
+                double vz = (r.nextDouble() - 0.5D) * 1.2D;
+                level().addParticle(i % 4 == 0 ? ModParticles.GOLD_SPARK.get() : i % 4 == 1 ? ModParticles.VOID_FLAME.get()
+                                : ModParticles.VOID_SPARK.get(),
+                        getX(), getY() + 2.0D + r.nextDouble() * 3.0D, getZ(), vx, vy, vz);
+            }
+            level().addParticle(ModParticles.SHOCKWAVE.get(), getX(), getY() + 0.1D, getZ(), 14.0D, 0.0D, 0.0D);
+            return;
+        }
+        super.handleEntityEvent(id);
     }
 
     // ------------------------------------------------------------------------------------------------------------
@@ -816,8 +951,10 @@ public class AetherfallEntity extends Monster implements GeoEntity {
     @Override
     public void registerControllers(AnimatableManager.ControllerRegistrar controllers) {
         controllers.add(new AnimationController<>(this, "body", 8, this::bodyAnimation));
-        controllers.add(new AnimationController<>(this, "attack", 3, this::attackAnimation)
-                .setAnimationSpeedHandler(boss -> (double) boss.tempo()));
+        controllers.add(new AnimationController<>(this, ATTACK_CONTROLLER, 3, this::attackAnimation)
+                .setAnimationSpeedHandler(boss -> (double) boss.tempo())
+                .triggerableAnim("dive_impact", DIVE_IMPACT)
+                .triggerableAnim("land_impact", LAND_IMPACT));
     }
 
     private PlayState bodyAnimation(AnimationState<AetherfallEntity> state) {

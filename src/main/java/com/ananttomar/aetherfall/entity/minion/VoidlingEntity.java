@@ -1,9 +1,11 @@
 package com.ananttomar.aetherfall.entity.minion;
 
+import com.ananttomar.aetherfall.config.AetherfallConfig;
 import com.ananttomar.aetherfall.effect.ErosionEffect;
 import com.ananttomar.aetherfall.entity.boss.AetherfallEntity;
 import com.ananttomar.aetherfall.entity.projectile.VoidMeteorEntity;
 import com.ananttomar.aetherfall.registry.ModEffects;
+import com.ananttomar.aetherfall.registry.ModParticles;
 import com.ananttomar.aetherfall.registry.ModSounds;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
@@ -108,6 +110,9 @@ public class VoidlingEntity extends Monster implements GeoEntity {
     public void aiStep() {
         super.aiStep();
         if (level().isClientSide) {
+            if (random.nextInt(4) < AetherfallConfig.particles(1, random)) {
+                level().addParticle(ModParticles.VOID_SPARK.get(), getRandomX(0.6D), getRandomY(), getRandomZ(0.6D), 0.0D, 0.03D, 0.0D);
+            }
             return;
         }
         if (ownerId != null && tickCount % 20 == 0 && level() instanceof ServerLevel server) {
@@ -142,6 +147,19 @@ public class VoidlingEntity extends Monster implements GeoEntity {
             }
         }
         blinkCooldown = 20;
+    }
+
+    @Override
+    public void handleEntityEvent(byte id) {
+        if (id == 60) {
+            for (int i = 0, n = AetherfallConfig.particles(24, random); i < n; i++) {
+                level().addParticle(i % 3 == 0 ? ModParticles.VOID_FLAME.get() : ModParticles.VOID_SPARK.get(),
+                        getRandomX(0.8D), getRandomY(), getRandomZ(0.8D),
+                        (random.nextDouble() - 0.5D) * 0.2D, random.nextDouble() * 0.2D, (random.nextDouble() - 0.5D) * 0.2D);
+            }
+            return;
+        }
+        super.handleEntityEvent(id);
     }
 
     @Override

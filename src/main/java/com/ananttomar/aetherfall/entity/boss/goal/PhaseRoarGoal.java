@@ -3,7 +3,10 @@ package com.ananttomar.aetherfall.entity.boss.goal;
 import com.ananttomar.aetherfall.damage.ModDamageTypes;
 import com.ananttomar.aetherfall.entity.boss.AetherfallEntity;
 import com.ananttomar.aetherfall.entity.boss.AttackType;
+import com.ananttomar.aetherfall.network.AetherfallNetwork;
+import com.ananttomar.aetherfall.registry.ModParticles;
 import com.ananttomar.aetherfall.registry.ModSounds;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.LivingEntity;
@@ -33,6 +36,10 @@ public class PhaseRoarGoal extends BossAttackGoal {
         faceTarget(5.0F);
         if (at(22)) {
             boss.playBossSound(ModSounds.WORLD_EATER_ROAR.get(), 6.0F, boss.isEnraged() ? 0.8F : 0.95F);
+            if (boss.level() instanceof ServerLevel server) {
+                AetherfallNetwork.shake(server, boss.position(), 48.0D, 1.0F, 30);
+                server.sendParticles(ModParticles.SHOCKWAVE.get(), boss.getX(), boss.getY() + 0.1D, boss.getZ(), 0, SHOCK_RADIUS + 4.0D, 0.0D, 0.0D, 1.0D);
+            }
             for (LivingEntity victim : boss.victimsIn(boss.getBoundingBox().inflate(FEAR_RADIUS))) {
                 if (victim instanceof Player) {
                     victim.addEffect(new MobEffectInstance(MobEffects.DARKNESS, 120, 0, false, false, true), boss);

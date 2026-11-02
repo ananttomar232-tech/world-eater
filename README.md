@@ -35,18 +35,29 @@ Every texture, sound and the score are original and generated from source code i
 regenerate them you need Python 3 with numpy and Pillow, plus ffmpeg built with libvorbis.
 
 ```bash
+python3 tools/model/world_eater.py     # boss: GeckoLib geometry, 19 animations, base and glow textures
+python3 tools/model/minions.py         # Voidling and Void Meteor models
 python3 tools/assets/gen_textures.py   # block and item textures (16x16, animated rune and core frames)
+python3 tools/assets/gen_fx_textures.py  # particles, Void Breath beam, ornate boss bar, Erosion icon
 python3 tools/assets/gen_logo.py       # mod list logo
 python3 tools/audio/sfx.py             # all 51 sound effects (mono, positional)
 python3 tools/audio/music.py           # "Aetherfall - The World Eater", 3:12 battle theme (stereo, streamed)
 ```
+
+See `docs/ASSETS.md` for bone names, animation names and timings, and how the emissive textures work.
+
+## Operator commands
+
+`/aetherfall attack <name>`, `/aetherfall phase <1-3>` and `/aetherfall fly <true|false>` act on the
+nearest World Eater (permission level 2). They are meant for map makers and testing.
 
 ## Configuration
 
 * `config/aetherfall-common.toml`: boss health, armor, damage, multiplayer scaling, terrain
   destruction rules (these respect `mobGriefing`), arena protection, altar cooldown and temple
   generation.
-* `config/aetherfall-client.toml`: boss music, screen shake, ornate boss bar and particle density.
+* `config/aetherfall-client.toml`: boss music, screen shake, ornate boss bar (and its position: bottom or
+  top) and particle density.
 
 ## License
 

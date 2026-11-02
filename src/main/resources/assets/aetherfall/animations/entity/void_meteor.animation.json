@@ -1,0 +1,59 @@
+{
+ "format_version": "1.8.0",
+ "animations": {
+  "animation.void_meteor.spin": {
+   "animation_length": 1.6,
+   "bones": {
+    "core": {
+     "rotation": {
+      "0": {
+       "vector": [
+        0.0,
+        0.0,
+        0.0
+       ],
+       "easing": "linear"
+      },
+      "0.8": {
+       "vector": [
+        180.0,
+        90.0,
+        0.0
+       ],
+       "easing": "linear"
+      },
+      "1.6": {
+       "vector": [
+        360.0,
+        180.0,
+        0.0
+       ],
+       "easing": "linear"
+      }
+     }
+    },
+    "chunks": {
+     "rotation": {
+      "0": {
+       "vector": [
+        0.0,
+        0.0,
+        0.0
+       ],
+       "easing": "linear"
+      },
+      "1.6": {
+       "vector": [
+        0.0,
+        -360.0,
+        90.0
+       ],
+       "easing": "linear"
+      }
+     }
+    }
+   },
+   "loop": true
+  }
+ }
+}

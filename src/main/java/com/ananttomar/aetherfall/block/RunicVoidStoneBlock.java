@@ -1,6 +1,11 @@
 package com.ananttomar.aetherfall.block;
 
+import com.ananttomar.aetherfall.config.AetherfallConfig;
+import com.ananttomar.aetherfall.registry.ModParticles;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
@@ -44,6 +49,25 @@ public class RunicVoidStoneBlock extends Block {
     @Override
     public @Nullable BlockState getStateForPlacement(BlockPlaceContext context) {
         return defaultBlockState().setValue(GLYPH, glyphFor(context.getClickedPos()));
+    }
+
+    /** Embers drift off the rune face; awakened runes burn with many more. */
+    @Override
+    public void animateTick(BlockState state, Level level, BlockPos pos, RandomSource random) {
+        boolean awakened = state.getValue(AWAKENED);
+        if (random.nextInt(awakened ? 2 : 10) >= AetherfallConfig.particles(1, random)) {
+            return;
+        }
+        Direction face = Direction.getRandom(random);
+        BlockPos out = pos.relative(face);
+        if (level.getBlockState(out).isSolidRender(level, out)) {
+            return;
+        }
+        double x = pos.getX() + 0.5D + face.getStepX() * 0.52D + (face.getStepX() == 0 ? (random.nextDouble() - 0.5D) * 0.8D : 0.0D);
+        double y = pos.getY() + 0.5D + face.getStepY() * 0.52D + (face.getStepY() == 0 ? (random.nextDouble() - 0.5D) * 0.8D : 0.0D);
+        double z = pos.getZ() + 0.5D + face.getStepZ() * 0.52D + (face.getStepZ() == 0 ? (random.nextDouble() - 0.5D) * 0.8D : 0.0D);
+        level.addParticle(ModParticles.VOID_EMBER.get(), x, y, z, face.getStepX() * 0.01D, 0.02D + random.nextDouble() * 0.02D,
+                face.getStepZ() * 0.01D);
     }
 
     @Override

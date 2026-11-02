@@ -6,6 +6,8 @@ import com.ananttomar.aetherfall.registry.ModCreativeTabs;
 import com.ananttomar.aetherfall.registry.ModEffects;
 import com.ananttomar.aetherfall.registry.ModEntities;
 import com.ananttomar.aetherfall.registry.ModItems;
+import com.ananttomar.aetherfall.registry.ModParticles;
+import com.ananttomar.aetherfall.network.AetherfallNetwork;
 import com.ananttomar.aetherfall.registry.ModSounds;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.common.MinecraftForge;
@@ -37,6 +39,7 @@ public final class AetherfallMod {
         ModItems.ITEMS.register(modBus);
         ModEntities.ENTITY_TYPES.register(modBus);
         ModEffects.EFFECTS.register(modBus);
+        ModParticles.PARTICLES.register(modBus);
         ModCreativeTabs.CREATIVE_TABS.register(modBus);
 
         context.registerConfig(ModConfig.Type.COMMON, AetherfallConfig.COMMON_SPEC, MOD_ID + "-common.toml");
@@ -47,6 +50,7 @@ public final class AetherfallMod {
     }
 
     private void commonSetup(final FMLCommonSetupEvent event) {
+        event.enqueueWork(AetherfallNetwork::register);
         LOGGER.info("Aetherfall stirs beyond the stars. {} blocks, {} items, {} entities and {} sound events registered.",
                 ModBlocks.BLOCKS.getEntries().size(),
                 ModItems.ITEMS.getEntries().size(),

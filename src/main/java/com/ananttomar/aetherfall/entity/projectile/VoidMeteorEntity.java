@@ -4,13 +4,17 @@ import com.ananttomar.aetherfall.config.AetherfallConfig;
 import com.ananttomar.aetherfall.damage.ModDamageTypes;
 import com.ananttomar.aetherfall.effect.ErosionEffect;
 import com.ananttomar.aetherfall.entity.boss.AetherfallEntity;
+import com.ananttomar.aetherfall.network.AetherfallNetwork;
 import com.ananttomar.aetherfall.registry.ModEntities;
+import com.ananttomar.aetherfall.registry.ModParticles;
 import com.ananttomar.aetherfall.registry.ModSounds;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
@@ -90,6 +94,9 @@ public class VoidMeteorEntity extends Projectile implements GeoEntity {
             }
         }
         Vec3 velocity = getDeltaMovement();
+        if (level().isClientSide) {
+            trail(velocity);
+        }
         setPos(getX() + velocity.x, getY() + velocity.y, getZ() + velocity.z);
         setDeltaMovement(velocity.add(0.0D, -GRAVITY, 0.0D));
         ProjectileUtil.rotateTowardsMovement(this, 0.3F);
@@ -139,8 +146,49 @@ public class VoidMeteorEntity extends Projectile implements GeoEntity {
         }
         level().playSound(null, getX(), getY(), getZ(), ModSounds.VOID_METEOR_IMPACT.get(), SoundSource.HOSTILE, 5.0F,
                 0.85F + random.nextFloat() * 0.3F);
+        if (level() instanceof ServerLevel server) {
+            AetherfallNetwork.shake(server, position(), 24.0D, isEnraged() ? 0.7F : 0.5F, 10);
+        }
         level().broadcastEntityEvent(this, (byte) 3);
         discard();
+    }
+
+    private void trail(Vec3 velocity) {
+        RandomSource r = random;
+        int count = AetherfallConfig.particles(isEnraged() ? 5 : 3, r);
+        for (int i = 0; i < count; i++) {
+            double back = r.nextDouble();
+            level().addParticle(ModParticles.VOID_FLAME.get(),
+                    getX() - velocity.x * back + (r.nextDouble() - 0.5D) * 0.9D,
+                    getY() + 0.6D - velocity.y * back + (r.nextDouble() - 0.5D) * 0.9D,
+                    getZ() - velocity.z * back + (r.nextDouble() - 0.5D) * 0.9D,
+                    -velocity.x * 0.05D, -velocity.y * 0.05D, -velocity.z * 0.05D);
+        }
+        if (r.nextInt(2) < AetherfallConfig.particles(1, r)) {
+            level().addParticle(ModParticles.GOLD_SPARK.get(), getX(), getY() + 0.6D, getZ(),
+                    (r.nextDouble() - 0.5D) * 0.2D, 0.05D, (r.nextDouble() - 0.5D) * 0.2D);
+        }
+    }
+
+    @Override
+    public void handleEntityEvent(byte id) {
+        if (id != 3) {
+            super.handleEntityEvent(id);
+            return;
+        }
+        RandomSource r = random;
+        float scale = isEnraged() ? 1.5F : 1.0F;
+        level().addParticle(ModParticles.SHOCKWAVE.get(), getX(), getY() + 0.05D, getZ(), 5.0D * scale, 0.0D, 0.0D);
+        for (int i = 0, n = AetherfallConfig.particles((int) (60 * scale), r); i < n; i++) {
+            double angle = r.nextDouble() * Math.PI * 2.0D;
+            double speed = 0.2D + r.nextDouble() * 0.6D * scale;
+            level().addParticle(i % 3 == 0 ? ModParticles.GOLD_SPARK.get() : ModParticles.VOID_SPARK.get(), getX(), getY() + 0.4D, getZ(),
+                    Math.cos(angle) * speed, 0.2D + r.nextDouble() * 0.6D, Math.sin(angle) * speed);
+        }
+        for (int i = 0, n = AetherfallConfig.particles((int) (24 * scale), r); i < n; i++) {
+            level().addParticle(ModParticles.VOID_FLAME.get(), getX() + (r.nextDouble() - 0.5D) * 3.0D, getY() + r.nextDouble(),
+                    getZ() + (r.nextDouble() - 0.5D) * 3.0D, 0.0D, 0.08D + r.nextDouble() * 0.12D, 0.0D);
+        }
     }
 
     @Override

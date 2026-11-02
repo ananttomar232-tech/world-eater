@@ -4,7 +4,10 @@ import com.ananttomar.aetherfall.damage.ModDamageTypes;
 import com.ananttomar.aetherfall.effect.ErosionEffect;
 import com.ananttomar.aetherfall.entity.boss.AetherfallEntity;
 import com.ananttomar.aetherfall.entity.boss.AttackType;
+import com.ananttomar.aetherfall.network.AetherfallNetwork;
+import com.ananttomar.aetherfall.registry.ModParticles;
 import com.ananttomar.aetherfall.registry.ModSounds;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.Vec3;
 
@@ -18,6 +21,7 @@ public class DiveSlamGoal extends BossAttackGoal {
     private Vec3 lockPos = Vec3.ZERO;
     private boolean diving;
     private boolean impacted;
+    private int impactTick;
 
     public DiveSlamGoal(AetherfallEntity boss) {
         super(boss, AttackType.DIVE_SLAM);
@@ -34,6 +38,9 @@ public class DiveSlamGoal extends BossAttackGoal {
     protected void onTick() {
         if (impacted) {
             holdStill();
+            if (tick - impactTick >= boss.scaled(22)) {
+                finish();
+            }
             return;
         }
         if (before(18)) {
@@ -63,6 +70,13 @@ public class DiveSlamGoal extends BossAttackGoal {
 
     private void impact() {
         impacted = true;
+        impactTick = tick;
+        boss.triggerAnim(AetherfallEntity.ATTACK_CONTROLLER, "dive_impact");
+        if (boss.level() instanceof ServerLevel server) {
+            AetherfallNetwork.shake(server, boss.position(), 40.0D, 0.9F, 20);
+            server.sendParticles(ModParticles.SHOCKWAVE.get(), boss.getX(), boss.getY() + 0.1D, boss.getZ(), 0, SHOCKWAVE_RADIUS, 0.0D, 0.0D, 1.0D);
+            server.sendParticles(ModParticles.GOLD_SPARK.get(), boss.getX(), boss.getY() + 0.5D, boss.getZ(), 60, 3.0D, 0.3D, 3.0D, 0.4D);
+        }
         diving = false;
         boss.setFlying(false);
         boss.setDeltaMovement(0.0D, -0.5D, 0.0D);

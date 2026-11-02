@@ -30,6 +30,17 @@ public final class AetherfallConfig {
     private AetherfallConfig() {
     }
 
+    /**
+     * Scales a client-side particle count by {@code particleDensity} (percent). Fractions are rounded
+     * probabilistically, so 30% of "1 per tick" still produces a particle about every third tick.
+     */
+    public static int particles(int base, net.minecraft.util.RandomSource random) {
+        double density = CLIENT_SPEC.isLoaded() ? CLIENT.particleDensity.get() / 100.0D : 1.0D;
+        double scaled = base * density;
+        int whole = (int) scaled;
+        return whole + (random.nextDouble() < scaled - whole ? 1 : 0);
+    }
+
     public static final class Common {
         // Boss balance
         public final ForgeConfigSpec.DoubleValue bossMaxHealth;
@@ -114,11 +125,14 @@ public final class AetherfallConfig {
         }
     }
 
+    public enum BossBarPosition { TOP, BOTTOM }
+
     public static final class Client {
         public final ForgeConfigSpec.BooleanValue bossMusic;
         public final ForgeConfigSpec.DoubleValue screenShakeIntensity;
         public final ForgeConfigSpec.BooleanValue ornateBossBar;
         public final ForgeConfigSpec.IntValue particleDensity;
+        public final ForgeConfigSpec.EnumValue<BossBarPosition> bossBarPosition;
 
         Client(ForgeConfigSpec.Builder builder) {
             builder.comment("Presentation settings. These never affect gameplay.").push("presentation");
@@ -131,6 +145,9 @@ public final class AetherfallConfig {
             ornateBossBar = builder
                     .comment("Use the gold-and-void ornate boss bar instead of the vanilla bar.")
                     .define("ornateBossBar", true);
+            bossBarPosition = builder
+                    .comment("Where the ornate boss bar sits: BOTTOM (above the hotbar, as in the reference art) or TOP.")
+                    .defineEnum("bossBarPosition", BossBarPosition.BOTTOM);
             particleDensity = builder
                     .comment("Particle density in percent for breath, meteors and wings.")
                     .defineInRange("particleDensity", 100, 10, 200);

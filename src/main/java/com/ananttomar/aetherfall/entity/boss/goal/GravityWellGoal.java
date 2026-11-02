@@ -4,7 +4,10 @@ import com.ananttomar.aetherfall.damage.ModDamageTypes;
 import com.ananttomar.aetherfall.effect.ErosionEffect;
 import com.ananttomar.aetherfall.entity.boss.AetherfallEntity;
 import com.ananttomar.aetherfall.entity.boss.AttackType;
+import com.ananttomar.aetherfall.network.AetherfallNetwork;
+import com.ananttomar.aetherfall.registry.ModParticles;
 import com.ananttomar.aetherfall.registry.ModSounds;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.Vec3;
 
@@ -47,6 +50,11 @@ public class GravityWellGoal extends BossAttackGoal {
         }
         if (at(62)) {
             boss.playBossSound(ModSounds.VOID_METEOR_IMPACT.get(), 4.0F, 0.7F);
+            if (boss.level() instanceof ServerLevel server) {
+                AetherfallNetwork.shake(server, well, 30.0D, 0.7F, 15);
+                server.sendParticles(ModParticles.VOID_SPARK.get(), well.x, well.y, well.z, 80, 0.5D, 0.5D, 0.5D, 0.8D);
+                server.sendParticles(ModParticles.GOLD_SPARK.get(), well.x, well.y, well.z, 30, 0.5D, 0.5D, 0.5D, 0.6D);
+            }
             for (LivingEntity victim : boss.victimsIn(boss.getBoundingBox().inflate(IMPLOSION_RADIUS + boss.getBbWidth()))) {
                 Vec3 out = victim.position().subtract(well);
                 if (out.length() > IMPLOSION_RADIUS) {

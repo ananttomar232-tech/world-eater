@@ -3,7 +3,9 @@ package com.ananttomar.aetherfall.entity.boss.goal;
 import com.ananttomar.aetherfall.entity.boss.AetherfallEntity;
 import com.ananttomar.aetherfall.entity.boss.AttackType;
 import com.ananttomar.aetherfall.entity.projectile.VoidMeteorEntity;
+import com.ananttomar.aetherfall.network.AetherfallNetwork;
 import com.ananttomar.aetherfall.registry.ModSounds;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
@@ -35,6 +37,9 @@ public class MeteorShowerGoal extends BossAttackGoal {
         faceTarget(4.0F);
         if (at(14)) {
             boss.playBossSound(ModSounds.WORLD_EATER_METEOR_SUMMON.get(), 6.0F, 1.0F);
+            if (boss.level() instanceof ServerLevel server) {
+                AetherfallNetwork.shake(server, boss.position(), 64.0D, 0.5F, 40);
+            }
         }
         if (between(30, 118)) {
             int interval = boss.isEnraged() ? 3 : 5;
